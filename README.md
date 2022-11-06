@@ -33,6 +33,9 @@ Integrantes:
 Descricão da primeira proposta da interface:
 
 - Imagem da proposta
+
+![](UX1.png)
+
 - Imagem da proposta no LCD
 - Vídeo explicando a interface
 
