@@ -9,13 +9,15 @@ Mais detalhes no site da disciplina:
 ## Detalhes
 
 Integrantes:
+- Diogo Duarte
+- Eduardo Araujo Rodrigues da Cunha 
+- Paulo Henrique Falcão
 
-- Nome 
-- Nome
+**Nome da marca: RIDE**
 
-Nome da marca:
+**Logo:**
 
-- Nome e logo?
+![](RideLogo.png)
 
 ## Interface
 
