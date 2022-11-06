@@ -37,6 +37,9 @@ Descricão da primeira proposta da interface:
 ![](UX1.png)
 
 - Imagem da proposta no LCD
+
+![](UX1-estatica.jpeg)
+
 - Vídeo explicando a interface
 
 ### Proposta UX 2 - B
