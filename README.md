@@ -19,6 +19,25 @@ Integrantes:
 
 ![](RideLogo.png)
 
+## Fonte e cores
+
+A fonte a ser utilizada é a *Noto Sans*, nós escolhemos ela pois é um fonte Sans-seriff que facilita a leitura, aspecto crucial para um aplicativo de rápido uso como é o caso do ciclomotor, os contornos não são muito rebuscados e a fonte é de fácil interpretação, além de que possui um aspecto moderno que condiz com o aplicativo.
+
+Já a paleta de cores, foi gerada com base na logo escolhida, de forma a ter uma cor contrastante com as demais, para facilitar e agilizar a leitura da informação, principalmente, pensando que o Sol estará incindindo sobre a tela constantemente.
+
+Paleta:
+
+#f5eef4
+
+#4f4649
+
+#785e62
+
+#a1777b
+
+#ca9094
+
+
 ## Interface
 
 ### Proposta UX 1 - C
@@ -64,6 +83,9 @@ Foi recomendado que mudassemos a forma que o usuário altera o tamanho do aro de
 ![](UX2.png)
 
 - Imagem da proposta no LCD
+
+![](UX1-estatica.jpeg)
+
 - Vídeo
 
 ### Proposta UX 3 - A
@@ -76,11 +98,14 @@ Foi recomendado que mudassemos a forma que o usuário altera o tamanho do aro de
 
 Detalhes da terceira interação da proposta de interface:
 
-<!-- 
- Adicionar texto descrevendo a evolução 
- da interface
--->
+Nenhuma mudança foi recomendada, a entrevistada ficou satisfeita com a interface vista.
 
 - Imagem da proposta
+
+![](UX2.png)
+
 - Imagem da proposta no LCD
+
+![](UX1-estatica.jpeg)
+
 - Vídeo 
