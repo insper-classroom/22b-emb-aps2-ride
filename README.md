@@ -61,6 +61,8 @@ Descricão da primeira proposta da interface:
 
 - Vídeo explicando a interface
 
+[Primeiro design da interface](https://www.youtube.com/watch?v=YbRiYTEYyZE)
+
 ### Proposta UX 2 - B
 
 > - Especifica e justifica quais vão ser as fontes (e tamanhos) a serem usadas na interface.
@@ -86,7 +88,11 @@ Foi recomendado que mudassemos a forma que o usuário altera o tamanho do aro de
 
 ![](UX1-estatica.jpeg)
 
-- Vídeo
+- Vídeos:
+
+[Entrevista Luis](https://www.youtube.com/watch?v=wGNr09FNtAA)
+
+[Mudanças após feedback](https://www.youtube.com/watch?v=BRIZ23_AEmY)
 
 ### Proposta UX 3 - A
 
@@ -108,4 +114,8 @@ Nenhuma mudança foi recomendada, a entrevistada ficou satisfeita com a interfac
 
 ![](UX1-estatica.jpeg)
 
-- Vídeo 
+- Vídeos:
+
+[Entrevista Florencia](https://www.youtube.com/watch?v=o3tAjf7h3tk)
+
+[Mudanças após feedback](https://www.youtube.com/watch?v=J6OlNxL0aZU)
