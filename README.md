@@ -57,7 +57,12 @@ Detalhes da segunda interação da proposta de interface:
  da interface
 -->
 
+Foi recomendado que mudassemos a forma que o usuário altera o tamanho do aro de sua bicicleta, ao invés de incrementar ou decrescer polegadas manualmente, existe uma lista de tamanhos pré estabelecidos em um drop-down list. Por fim, na seleção da unidade utilizada pelo usúario, foi recomendado a mudança de metros para milhas.
+
 - Imagem da proposta
+
+![](UX2.png)
+
 - Imagem da proposta no LCD
 - Vídeo
 
