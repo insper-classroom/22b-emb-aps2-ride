@@ -8,13 +8,17 @@
 #include "lvgl.h"
 #include "touch/touch.h"
 #include "imgUX1.h"
+#include "settings_img.h"
 
 /************************************************************************/
 /* LCD / LVGL                                                           */
 /************************************************************************/
 
-#define LV_HOR_RES_MAX          (320)
-#define LV_VER_RES_MAX          (240)
+// #define LV_HOR_RES_MAX          (320)
+// #define LV_VER_RES_MAX          (240)
+
+#define LV_HOR_RES_MAX          (240)
+#define LV_VER_RES_MAX          (320)
 
 /*A static or global variable to store the buffers*/
 static lv_disp_draw_buf_t disp_buf;
@@ -23,6 +27,8 @@ static lv_disp_draw_buf_t disp_buf;
 static lv_color_t buf_1[LV_HOR_RES_MAX * LV_VER_RES_MAX];
 static lv_disp_drv_t disp_drv;          /*A variable to hold the drivers. Must be static or global.*/
 static lv_indev_drv_t indev_drv;
+
+static  lv_obj_t * label_settings_btn;
 
 /************************************************************************/
 /* RTOS                                                                 */
@@ -65,26 +71,48 @@ static void event_handler(lv_event_t * e) {
 	}
 }
 
-void lv_ex_btn_1(void) {
-	lv_obj_t * label;
+static void settings_handler(lv_event_t * e) {
+	lv_event_code_t code = lv_event_get_code(e);
 
-	lv_obj_t * btn1 = lv_btn_create(lv_scr_act());
-	lv_obj_add_event_cb(btn1, event_handler, LV_EVENT_ALL, NULL);
-	lv_obj_align(btn1, LV_ALIGN_CENTER, 0, -40);
+	if(code == LV_EVENT_CLICKED) {
+		printf("Clicked\n");
+	}
+	else if(code == LV_EVENT_VALUE_CHANGED) {
+		printf("Toggled\n");
+	}
+}
 
-	label = lv_label_create(btn1);
-	lv_label_set_text(label, "Corsi");
-	lv_obj_center(label);
+void lv_widgets(void) {
+	printf("Criando widgets \n");
 
-	lv_obj_t * btn2 = lv_btn_create(lv_scr_act());
-	lv_obj_add_event_cb(btn2, event_handler, LV_EVENT_ALL, NULL);
-	lv_obj_align(btn2, LV_ALIGN_CENTER, 0, 40);
-	lv_obj_add_flag(btn2, LV_OBJ_FLAG_CHECKABLE);
-	lv_obj_set_height(btn2, LV_SIZE_CONTENT);
+	static lv_style_t style;
+	lv_style_init(&style);
+	lv_style_set_bg_color(&style, lv_color_white());
+	lv_style_set_border_color(&style, lv_color_white());
+	lv_style_set_border_width(&style, 0);
 
-	label = lv_label_create(btn2);
-	lv_label_set_text(label, "Toggle");
-	lv_obj_center(label);
+	// Settings button
+	LV_IMG_DECLARE(settings_img);
+	lv_obj_t * settings_btn = lv_imgbtn_create(lv_scr_act());
+	lv_obj_set_width(settings_btn, 32); 
+	lv_obj_set_height(settings_btn, 32);
+
+	lv_imgbtn_set_src(settings_btn, LV_IMGBTN_STATE_RELEASED, NULL, NULL, &settings_img);
+	lv_obj_add_event_cb(settings_btn, settings_handler, LV_EVENT_ALL, NULL);
+	lv_obj_align(settings_btn, LV_ALIGN_TOP_LEFT, 0, 0);
+	lv_obj_add_style(settings_btn, &style, 0);
+
+	// label_settings_btn = lv_label_create(settings_btn);
+	// lv_label_set_text_fmt(label_settings_btn, LV_SYMBOL_SETTINGS);
+	// lv_obj_center(label_settings_btn);
+
+
+	// labelSettings = lv_label_create(lv_scr_act());
+	// lv_obj_align_to(labelSettings, labelTempText, LV_ALIGN_OUT_LEFT_TOP, 50, -30);
+	// lv_obj_set_style_text_color(labelSettings, lv_color_white(), LV_STATE_DEFAULT);
+	// lv_label_set_text_fmt(labelSettings, LV_SYMBOL_SETTINGS);
+
+
 }
 
 /************************************************************************/
@@ -94,9 +122,11 @@ void lv_ex_btn_1(void) {
 static void task_lcd(void *pvParameters) {
 	int px, py;
 	
-	lv_obj_t * img = lv_img_create(lv_scr_act());
-	lv_img_set_src(img, &imgUX1);
-	lv_obj_align(img, LV_ALIGN_CENTER, 0, 0);
+	// lv_obj_t * img = lv_img_create(lv_scr_act());
+	// lv_img_set_src(img, &imgUX1);
+	// lv_obj_align(img, LV_ALIGN_CENTER, 0, 0);
+
+	lv_widgets();
 
 	//lv_ex_btn_1();
 
@@ -160,8 +190,8 @@ void my_input_read(lv_indev_drv_t * drv, lv_indev_data_t*data) {
 	else
 		data->state = LV_INDEV_STATE_RELEASED; 
 	
-	data->point.x = px;
-	data->point.y = py;
+	data->point.x = py;
+	data->point.y = 320 - px;
 }
 
 void configure_lvgl(void) {
@@ -197,6 +227,7 @@ int main(void) {
 	configure_lcd();
 	configure_touch();
 	configure_lvgl();
+	ili9341_set_orientation(ILI9341_FLIP_Y | ILI9341_SWITCH_XY);
 
 	/* Create task to control oled */
 	if (xTaskCreate(task_lcd, "LCD", TASK_LCD_STACK_SIZE, NULL, TASK_LCD_STACK_PRIORITY, NULL) != pdPASS) {
