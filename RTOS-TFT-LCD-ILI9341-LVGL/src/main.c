@@ -10,6 +10,18 @@
 #include "imgUX1.h"
 #include "settings_img.h"
 
+LV_FONT_DECLARE(noto50);
+LV_FONT_DECLARE(noto20);
+LV_FONT_DECLARE(settings_icon);
+LV_FONT_DECLARE(playpause_icon);
+LV_FONT_DECLARE(updown_icon);
+
+#define MY_SETTINGS_SYMBOL "\xEF\x80\x93"
+#define MY_PLAY_SYMBOL "\xEF\x81\x8B"
+#define MY_PAUSE_SYMBOL "\xEF\x81\x8C"
+#define MY_UP_ARROW_SYMBOL "\xEF\x84\x82"
+#define MY_DOWN_ARROW_SYMBOL "\xEF\x84\x83"
+
 /************************************************************************/
 /* LCD / LVGL                                                           */
 /************************************************************************/
@@ -28,7 +40,17 @@ static lv_color_t buf_1[LV_HOR_RES_MAX * LV_VER_RES_MAX];
 static lv_disp_drv_t disp_drv;          /*A variable to hold the drivers. Must be static or global.*/
 static lv_indev_drv_t indev_drv;
 
+// declarar a tela como global e estática
+static lv_obj_t * main_scr;  // main screen 1
+static lv_obj_t * settings_scr;  // settings screen 2
+
 static  lv_obj_t * label_settings_btn;
+static  lv_obj_t * label_play_btn;
+static  lv_obj_t * label_pause_btn;
+static  lv_obj_t * label_up_arrow;
+static  lv_obj_t * label_speed;
+static  lv_obj_t * label_speed_txt;
+
 
 /************************************************************************/
 /* RTOS                                                                 */
@@ -82,9 +104,9 @@ static void settings_handler(lv_event_t * e) {
 	}
 }
 
-void lv_widgets(void) {
-	printf("Criando widgets \n");
+void lv_main_scr(void) {
 
+	printf("Criando widgets \n");
 	static lv_style_t style;
 	lv_style_init(&style);
 	lv_style_set_bg_color(&style, lv_color_white());
@@ -92,26 +114,74 @@ void lv_widgets(void) {
 	lv_style_set_border_width(&style, 0);
 
 	// Settings button
-	LV_IMG_DECLARE(settings_img);
-	lv_obj_t * settings_btn = lv_imgbtn_create(lv_scr_act());
+	lv_obj_t * settings_btn = lv_imgbtn_create(main_scr);
 	lv_obj_set_width(settings_btn, 32); 
 	lv_obj_set_height(settings_btn, 32);
 
-	lv_imgbtn_set_src(settings_btn, LV_IMGBTN_STATE_RELEASED, NULL, NULL, &settings_img);
 	lv_obj_add_event_cb(settings_btn, settings_handler, LV_EVENT_ALL, NULL);
 	lv_obj_align(settings_btn, LV_ALIGN_TOP_LEFT, 0, 0);
 	lv_obj_add_style(settings_btn, &style, 0);
 
-	// label_settings_btn = lv_label_create(settings_btn);
-	// lv_label_set_text_fmt(label_settings_btn, LV_SYMBOL_SETTINGS);
-	// lv_obj_center(label_settings_btn);
+	label_settings_btn = lv_label_create(settings_btn);
+	lv_obj_set_style_text_font(label_settings_btn, &settings_icon, LV_STATE_DEFAULT);
+	lv_label_set_text_fmt(label_settings_btn, MY_SETTINGS_SYMBOL);
+	lv_obj_center(label_settings_btn);
+
+	// Play button
+	lv_obj_t * play_btn = lv_imgbtn_create(main_scr);
+	lv_obj_set_width(play_btn, 32); 
+	lv_obj_set_height(play_btn, 32);
+
+	lv_obj_add_event_cb(play_btn, settings_handler, LV_EVENT_ALL, NULL);
+	lv_obj_align(play_btn, LV_ALIGN_BOTTOM_LEFT, 10, -10);
+	lv_obj_add_style(play_btn, &style, 0);
+
+	label_play_btn = lv_label_create(play_btn);
+	lv_obj_set_style_text_font(label_play_btn, &playpause_icon, LV_STATE_DEFAULT);
+	lv_label_set_text_fmt(label_play_btn, MY_PLAY_SYMBOL);
+	lv_obj_center(label_play_btn);
 
 
-	// labelSettings = lv_label_create(lv_scr_act());
-	// lv_obj_align_to(labelSettings, labelTempText, LV_ALIGN_OUT_LEFT_TOP, 50, -30);
-	// lv_obj_set_style_text_color(labelSettings, lv_color_white(), LV_STATE_DEFAULT);
-	// lv_label_set_text_fmt(labelSettings, LV_SYMBOL_SETTINGS);
+	// Pause button
+	lv_obj_t * pause_btn = lv_imgbtn_create(main_scr);
+	lv_obj_set_width(pause_btn, 32); 
+	lv_obj_set_height(pause_btn, 32);
 
+	lv_obj_add_event_cb(pause_btn, settings_handler, LV_EVENT_ALL, NULL);
+	lv_obj_align(pause_btn, LV_ALIGN_BOTTOM_RIGHT, -10, -10);
+	lv_obj_add_style(pause_btn, &style, 0);
+
+	label_pause_btn = lv_label_create(pause_btn);
+	lv_obj_set_style_text_font(label_pause_btn, &playpause_icon, LV_STATE_DEFAULT);
+	lv_label_set_text_fmt(label_pause_btn, MY_PAUSE_SYMBOL);
+	lv_obj_center(label_pause_btn);
+
+	// Up button
+	lv_obj_t * up_arrow = lv_imgbtn_create(main_scr);
+	lv_obj_set_width(up_arrow, 60); 
+	lv_obj_set_height(up_arrow, 60);
+
+	label_up_arrow = lv_label_create(up_arrow);
+	lv_obj_align(up_arrow, LV_ALIGN_CENTER, 45, -30);
+	lv_obj_add_style(up_arrow, &style, 0);
+	lv_obj_set_style_text_font(label_up_arrow, &updown_icon, LV_STATE_DEFAULT);
+	lv_label_set_text_fmt(label_up_arrow, MY_UP_ARROW_SYMBOL);
+	lv_obj_center(label_up_arrow); 
+
+	// Speed number
+	label_speed = lv_label_create(main_scr);
+	lv_obj_align(label_speed, LV_ALIGN_CENTER, -5 , -30);
+	lv_obj_set_style_text_font(label_speed, &noto50, LV_STATE_DEFAULT);
+	lv_obj_set_style_text_color(label_speed, lv_color_black(), LV_STATE_DEFAULT);
+	lv_label_set_text_fmt(label_speed, "%02d", 30);
+
+
+	// Speed text
+	label_speed_txt = lv_label_create(main_scr);
+	lv_obj_align(label_speed_txt, LV_ALIGN_CENTER, 0 , 10);
+	lv_obj_set_style_text_font(label_speed_txt, &noto20, LV_STATE_DEFAULT);
+	lv_obj_set_style_text_color(label_speed_txt, lv_color_black(), LV_STATE_DEFAULT);
+	lv_label_set_text_fmt(label_speed_txt, "Km/h");
 
 }
 
@@ -126,7 +196,10 @@ static void task_lcd(void *pvParameters) {
 	// lv_img_set_src(img, &imgUX1);
 	// lv_obj_align(img, LV_ALIGN_CENTER, 0, 0);
 
-	lv_widgets();
+	// Cria main screen
+	main_scr  = lv_obj_create(NULL);
+	lv_main_scr();
+	lv_scr_load(main_scr); // exibe tela 1
 
 	//lv_ex_btn_1();
 

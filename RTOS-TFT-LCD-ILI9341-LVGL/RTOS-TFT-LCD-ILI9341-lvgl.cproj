@@ -2270,6 +2270,18 @@
     <Compile Include="src\imgUX1.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="src\noto20.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\noto50.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\playpause_icon.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\settings_icon.c">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="src\settings_img.h">
       <SubType>compile</SubType>
     </Compile>
@@ -2277,6 +2289,9 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\touch\touch.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\updown_icon.c">
       <SubType>compile</SubType>
     </Compile>
     <None Include="src\ASF\sam\drivers\afec\afec.h">

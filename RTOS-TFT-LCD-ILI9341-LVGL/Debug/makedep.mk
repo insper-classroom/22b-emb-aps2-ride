@@ -620,7 +620,17 @@ src\ASF\thirdparty\lvgl8\tests\unity\unity.c
 
 src\ASF\thirdparty\lvgl8\tests\unity\unity_support.c
 
+src\noto20.c
+
+src\noto50.c
+
+src\playpause_icon.c
+
+src\settings_icon.c
+
 src\touch\touch.c
+
+src\updown_icon.c
 
 src\ASF\common\services\sleepmgr\sam\sleepmgr.c
 
