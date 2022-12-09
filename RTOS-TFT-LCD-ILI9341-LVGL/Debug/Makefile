@@ -539,6 +539,7 @@ C_SRCS +=  \
 ../src/ASF/thirdparty/lvgl8/tests/unity/unity.c \
 ../src/ASF/thirdparty/lvgl8/tests/unity/unity_support.c \
 ../src/noto20.c \
+../src/noto30.c \
 ../src/noto50.c \
 ../src/playpause_icon.c \
 ../src/settings_icon.c \
@@ -896,6 +897,7 @@ src/ASF/thirdparty/lvgl8/tests/src/test_fonts/font_3.o \
 src/ASF/thirdparty/lvgl8/tests/unity/unity.o \
 src/ASF/thirdparty/lvgl8/tests/unity/unity_support.o \
 src/noto20.o \
+src/noto30.o \
 src/noto50.o \
 src/playpause_icon.o \
 src/settings_icon.o \
@@ -1246,6 +1248,7 @@ src/ASF/thirdparty/lvgl8/tests/src/test_fonts/font_3.o \
 src/ASF/thirdparty/lvgl8/tests/unity/unity.o \
 src/ASF/thirdparty/lvgl8/tests/unity/unity_support.o \
 src/noto20.o \
+src/noto30.o \
 src/noto50.o \
 src/playpause_icon.o \
 src/settings_icon.o \
@@ -1596,6 +1599,7 @@ src/ASF/thirdparty/lvgl8/tests/src/test_fonts/font_3.d \
 src/ASF/thirdparty/lvgl8/tests/unity/unity.d \
 src/ASF/thirdparty/lvgl8/tests/unity/unity_support.d \
 src/noto20.d \
+src/noto30.d \
 src/noto50.d \
 src/playpause_icon.d \
 src/settings_icon.d \
@@ -1946,6 +1950,7 @@ src/ASF/thirdparty/lvgl8/tests/src/test_fonts/font_3.d \
 src/ASF/thirdparty/lvgl8/tests/unity/unity.d \
 src/ASF/thirdparty/lvgl8/tests/unity/unity_support.d \
 src/noto20.d \
+src/noto30.d \
 src/noto50.d \
 src/playpause_icon.d \
 src/settings_icon.d \
@@ -4170,6 +4175,13 @@ src/noto20.o: ../src/noto20.c
 	@echo Finished building: $<
 	
 
+src/noto30.o: ../src/noto30.c
+	@echo Building file: $<
+	@echo Invoking: ARM/GNU C Compiler : 6.3.1
+	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\arm\arm-gnu-toolchain\bin\arm-none-eabi-gcc.exe$(QUOTE)  -x c -mthumb -D__SAME70Q21B__ -DDEBUG -D__SAME70Q21B__ -DBOARD=SAME70_XPLAINED -Dscanf=iscanf -DARM_MATH_CM7=true -Dprintf=iprintf -DLV_CONF_INCLUDE_SIMPLE -D__FREERTOS__  -I"../src/ASF/common/boards" -I"../src/ASF/sam/utils" -I"../src/ASF/sam/utils/header_files" -I"../src/ASF/sam/utils/preprocessor" -I"../src/ASF/thirdparty/CMSIS/Include" -I"../src/ASF/thirdparty/CMSIS/Lib/GCC" -I"../src/ASF/sam/utils/fpu" -I"../src/ASF/common/utils" -I"../src/ASF/sam/utils/cmsis/same70/include" -I"../src/ASF/sam/utils/cmsis/same70/source/templates" -I"../src/ASF/common/services/serial/sam_uart" -I"../src/ASF/common/services/serial" -I"../src/ASF/common/services/clock" -I"../src/ASF/sam/drivers/pmc" -I"../src/ASF/sam/drivers/uart" -I"../src/ASF/sam/drivers/usart" -I"../src/ASF/common/services/delay" -I"../src/ASF/common/services/ioport" -I"../src/ASF/common/utils/stdio/stdio_serial" -I"../src/ASF/sam/boards/same70_xplained" -I"../src/ASF/sam/boards" -I"../src/ASF/common/services/gpio" -I"../src/ASF/sam/drivers/pio" -I"../src/ASF/sam/drivers/mpu" -I"../src" -I"../src/config" -I"../src/ASF/sam/drivers/afec" -I"../src/ASF/common/services/sleepmgr" -I"../src/ASF/sam/components/display/ili9341" -I"../src/ASF/thirdparty/lvgl8" -I"../src/ASF/thirdparty/freertos/freertos-8.2.3/Source/include" -I"../src/ASF/thirdparty/freertos/freertos-8.2.3/Source/portable/GCC/ARM_CM7/r0p1" -I"../src/ASF/common/services/spi/sam_spi" -I"../src/ASF/common/services/spi" -I"../src/ASF/sam/drivers/spi" -I"../src/ASF/sam/drivers/twihs" -I"../src/ASF/common/services/twi"  -O1 -fdata-sections -ffunction-sections -mlong-calls -g3 -Wall -mcpu=cortex-m7 -c -pipe -fno-strict-aliasing -Wall -Wstrict-prototypes -Wmissing-prototypes -Werror-implicit-function-declaration -Wpointer-arith -std=gnu99 -ffunction-sections -fdata-sections -Wchar-subscripts -Wcomment -Wformat=2 -Wimplicit-int -Wmain -Wparentheses -Wsequence-point -Wreturn-type -Wswitch -Wtrigraphs -Wunused -Wuninitialized -Wunknown-pragmas -Wfloat-equal -Wundef -Wshadow -Wbad-function-cast -Wwrite-strings -Wsign-compare -Waggregate-return -Wmissing-declarations -Wformat -Wmissing-format-attribute -Wno-deprecated-declarations -Wpacked -Wredundant-decls -Wnested-externs -Wlong-long -Wunreachable-code -Wcast-align --param max-inline-insns-single=500 -mfloat-abi=softfp -mfpu=fpv5-sp-d16 -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"   -o "$@" "$<" 
+	@echo Finished building: $<
+	
+
 src/noto50.o: ../src/noto50.c
 	@echo Building file: $<
 	@echo Invoking: ARM/GNU C Compiler : 6.3.1
@@ -4462,7 +4474,7 @@ all: $(OUTPUT_FILE_PATH) $(ADDITIONAL_DEPENDENCIES)
 $(OUTPUT_FILE_PATH): $(OBJS) $(USER_OBJS) $(OUTPUT_FILE_DEP) $(LIB_DEP) $(LINKER_SCRIPT_DEP)
 	@echo Building target: $@
 	@echo Invoking: ARM/GNU Linker : 6.3.1
-	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\arm\arm-gnu-toolchain\bin\arm-none-eabi-gcc.exe$(QUOTE) -o$(OUTPUT_FILE_PATH_AS_ARGS) @"C:\Users\diogo\OneDrive\Documentos\Insper\quintoSemestre\embarcados\22b-emb-aps2-ride\RTOS-TFT-LCD-ILI9341-LVGL\Debug\ld_ar.mk"  $(USER_OBJS) $(LIBS) -mthumb -Wl,-Map="RTOS-TFT-LCD-ILI9341-lvgl.map" -Wl,--start-group -larm_cortexM7lfsp_math_softfp -lm  -Wl,--end-group -L"../src/ASF/thirdparty/CMSIS/Lib/GCC"  -Wl,--gc-sections -mcpu=cortex-m7 -Wl,--entry=Reset_Handler -Wl,--cref -mthumb -T../src/ASF/sam/utils/linker_scripts/same70/same70q21/gcc/flash.ld  
+	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\arm\arm-gnu-toolchain\bin\arm-none-eabi-gcc.exe$(QUOTE) -o$(OUTPUT_FILE_PATH_AS_ARGS) @"C:\Users\Eduardo\Insper\5 Semestre\Embarcados\APS2\22b-emb-aps2-ride\RTOS-TFT-LCD-ILI9341-LVGL\Debug\ld_ar.mk"  $(USER_OBJS) $(LIBS) -mthumb -Wl,-Map="RTOS-TFT-LCD-ILI9341-lvgl.map" -Wl,--start-group -larm_cortexM7lfsp_math_softfp -lm  -Wl,--end-group -L"../src/ASF/thirdparty/CMSIS/Lib/GCC"  -Wl,--gc-sections -mcpu=cortex-m7 -Wl,--entry=Reset_Handler -Wl,--cref -mthumb -T../src/ASF/sam/utils/linker_scripts/same70/same70q21/gcc/flash.ld  
 	@echo Finished building target: $@
 	"C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\arm\arm-gnu-toolchain\bin\arm-none-eabi-objcopy.exe" -O binary "RTOS-TFT-LCD-ILI9341-lvgl.elf" "RTOS-TFT-LCD-ILI9341-lvgl.bin"
 	"C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\arm\arm-gnu-toolchain\bin\arm-none-eabi-objcopy.exe" -O ihex -R .eeprom -R .fuse -R .lock -R .signature  "RTOS-TFT-LCD-ILI9341-lvgl.elf" "RTOS-TFT-LCD-ILI9341-lvgl.hex"
@@ -4482,5 +4494,5 @@ clean:
 	-$(RM) $(OBJS_AS_ARGS) $(EXECUTABLES)  
 	-$(RM) $(C_DEPS_AS_ARGS)   
 	rm -rf "RTOS-TFT-LCD-ILI9341-lvgl.elf" "RTOS-TFT-LCD-ILI9341-lvgl.a" "RTOS-TFT-LCD-ILI9341-lvgl.hex" "RTOS-TFT-LCD-ILI9341-lvgl.bin" "RTOS-TFT-LCD-ILI9341-lvgl.lss" "RTOS-TFT-LCD-ILI9341-lvgl.eep" "RTOS-TFT-LCD-ILI9341-lvgl.map" "RTOS-TFT-LCD-ILI9341-lvgl.srec"
-	rm -rf "C:\Users\diogo\OneDrive\Documentos\Insper\quintoSemestre\embarcados\22b-emb-aps2-ride\RTOS-TFT-LCD-ILI9341-LVGL\Debug\ld_ar.mk"
+	rm -rf "C:\Users\Eduardo\Insper\5 Semestre\Embarcados\APS2\22b-emb-aps2-ride\RTOS-TFT-LCD-ILI9341-LVGL\Debug\ld_ar.mk"
 	

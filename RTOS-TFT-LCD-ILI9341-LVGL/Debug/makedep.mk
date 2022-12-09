@@ -622,6 +622,8 @@ src\ASF\thirdparty\lvgl8\tests\unity\unity_support.c
 
 src\noto20.c
 
+src\noto30.c
+
 src\noto50.c
 
 src\playpause_icon.c
