@@ -50,6 +50,8 @@ static  lv_obj_t * label_pause_btn;
 static  lv_obj_t * label_up_arrow;
 static  lv_obj_t * label_speed;
 static  lv_obj_t * label_speed_txt;
+static  lv_obj_t * label_average_speed_txt;
+static  lv_obj_t * label_distance_txt;
 
 
 /************************************************************************/
@@ -162,7 +164,7 @@ void lv_main_scr(void) {
 	lv_obj_set_height(up_arrow, 60);
 
 	label_up_arrow = lv_label_create(up_arrow);
-	lv_obj_align(up_arrow, LV_ALIGN_CENTER, 45, -30);
+	lv_obj_align(up_arrow, LV_ALIGN_CENTER, 45, -55);
 	lv_obj_add_style(up_arrow, &style, 0);
 	lv_obj_set_style_text_font(label_up_arrow, &updown_icon, LV_STATE_DEFAULT);
 	lv_label_set_text_fmt(label_up_arrow, MY_UP_ARROW_SYMBOL);
@@ -170,7 +172,7 @@ void lv_main_scr(void) {
 
 	// Speed number
 	label_speed = lv_label_create(main_scr);
-	lv_obj_align(label_speed, LV_ALIGN_CENTER, -5 , -30);
+	lv_obj_align(label_speed, LV_ALIGN_CENTER, -5 , -55);
 	lv_obj_set_style_text_font(label_speed, &noto50, LV_STATE_DEFAULT);
 	lv_obj_set_style_text_color(label_speed, lv_color_black(), LV_STATE_DEFAULT);
 	lv_label_set_text_fmt(label_speed, "%02d", 30);
@@ -178,10 +180,26 @@ void lv_main_scr(void) {
 
 	// Speed text
 	label_speed_txt = lv_label_create(main_scr);
-	lv_obj_align(label_speed_txt, LV_ALIGN_CENTER, 0 , 10);
+	lv_obj_align(label_speed_txt, LV_ALIGN_CENTER, 0 , -15);
 	lv_obj_set_style_text_font(label_speed_txt, &noto20, LV_STATE_DEFAULT);
 	lv_obj_set_style_text_color(label_speed_txt, lv_color_black(), LV_STATE_DEFAULT);
 	lv_label_set_text_fmt(label_speed_txt, "Km/h");
+	
+	// Average speed text
+	
+	label_average_speed_txt = lv_label_create(main_scr);
+	lv_obj_align(label_average_speed_txt, LV_ALIGN_CENTER, -30 , 40);
+	lv_obj_set_style_text_font(label_average_speed_txt, &noto20, LV_STATE_DEFAULT);
+	lv_obj_set_style_text_color(label_average_speed_txt, lv_color_black(), LV_STATE_DEFAULT);
+	lv_label_set_text_fmt(label_average_speed_txt, "Km/h");
+	
+	// Distance text
+	
+	label_distance_txt = lv_label_create(main_scr);
+	lv_obj_align(label_distance_txt, LV_ALIGN_CENTER, 80 , 40);
+	lv_obj_set_style_text_font(label_distance_txt, &noto20, LV_STATE_DEFAULT);
+	lv_obj_set_style_text_color(label_distance_txt, lv_color_black(), LV_STATE_DEFAULT);
+	lv_label_set_text_fmt(label_distance_txt, "Km");
 
 }
 
