@@ -11,6 +11,15 @@
 #include "settings_img.h"
 #include "ride.h"
 
+#include "arm_math.h"
+
+#define TASK_SIMULATOR_STACK_SIZE (4096 / sizeof(portSTACK_TYPE))
+#define TASK_SIMULATOR_STACK_PRIORITY (tskIDLE_PRIORITY)
+
+#define RAIO 0.508/2
+#define VEL_MAX_KMH  5.0f
+#define VEL_MIN_KMH  0.5f
+
 LV_FONT_DECLARE(noto50);
 LV_FONT_DECLARE(noto30);
 LV_FONT_DECLARE(noto20);
@@ -27,6 +36,8 @@ LV_FONT_DECLARE(updown_icon);
 #define CICLE_PIO PIOA
 #define CICLE_PIO_ID ID_PIOA
 #define CICLE_IDX_MASK (1 << 19)
+
+
 
 typedef struct  {
   uint32_t year;
@@ -486,8 +497,7 @@ static void task_rtc(void *pvParameters){
 	lv_label_set_text_fmt(label_time_number, "%02d:%02d:%02d", current_hour, current_min, current_sec);    
 
 	for (;;)  {
-		if (xSemaphoreTake(xSemaphoreRTC, 0)) {	
-			printf("Atualiza horario\n");		
+		if (xSemaphoreTake(xSemaphoreRTC, 0)) {		
 			rtc_get_time(RTC, &current_hour, &current_min, &current_sec);
 			if (second_flag == 0) {
 				lv_label_set_text_fmt(label_time_number, "%02d:%02d:%02d", current_hour, current_min, current_sec);
@@ -498,6 +508,70 @@ static void task_rtc(void *pvParameters){
 			}
 		}
 	}
+}
+
+static void task_speed(void *pvParameters){
+	int instant_speed = 0;
+	int dt_rtt;
+	float dt;
+	float w, r;
+	int pol = 20;
+
+	for (;;)  {
+		if (xQueueReceive(xQueueTime, &dt_rtt, 0)) {
+			printf("Dt rtt: %d\n",dt_rtt);
+			// dt = dt_rtt / 18000;
+			// w = 2 * 3.14 / dt;
+			// r = pol * 0.0254;
+			// instant_speed = w * r;
+			// printf("Instant speed: %d\n",instant_speed);
+		}		
+	}
+}
+
+float kmh_to_hz(float vel, float raio) {
+    float f = vel / (2*PI*raio*3.6);
+    return(f);
+}
+
+static void task_simulador(void *pvParameters) {
+    pmc_enable_periph_clk(ID_PIOC);
+    pio_set_output(PIOC, PIO_PC31, 1, 0, 0);
+
+    float vel = VEL_MAX_KMH;
+    float f;
+    int ramp_up = 1;
+	int ramp = 0;
+
+    while(1) {
+        pio_clear(PIOC, PIO_PC31);
+        delay_ms(1);
+        pio_set(PIOC, PIO_PC31);
+
+		if (ramp) {
+			if (ramp_up) {
+				printf("[SIMU] ACELERANDO: %d \n", (int) (10*vel));
+				vel += 0.5;
+			} else {
+				printf("[SIMU] DESACELERANDO: %d \n",  (int) (10*vel));
+				vel -= 0.5;
+			}
+
+			if (vel >= VEL_MAX_KMH) {
+				ramp_up = 0;
+			} else if (vel <= VEL_MIN_KMH) {
+				ramp_up = 1;
+			}
+
+		} else {
+			vel = 5;
+			printf("[SIMU] CONSTANTE: %d \n", (int) (10*vel));
+		}
+        f = kmh_to_hz(vel, RAIO);
+        int t = 965*(1.0/f); //UTILIZADO 965 como multiplicador ao invés de 1000
+                             //para compensar o atraso gerado pelo Escalonador do freeRTOS
+        delay_ms(t);
+    }
 }
 
 /************************************************************************/
@@ -671,6 +745,15 @@ int main(void) {
 	if (xTaskCreate(task_rtc, "RTC", TASK_LCD_STACK_SIZE, NULL, TASK_LCD_STACK_PRIORITY, NULL) != pdPASS) {
 		printf("Failed to create rtc task\r\n");
 	}
+
+	if (xTaskCreate(task_simulador, "SIMUL", TASK_SIMULATOR_STACK_SIZE, NULL, TASK_SIMULATOR_STACK_PRIORITY, NULL) != pdPASS) {
+        printf("Failed to create lcd task\r\n");
+    }
+
+	if (xTaskCreate(task_speed, "speed", TASK_LCD_STACK_SIZE, NULL, TASK_LCD_STACK_PRIORITY, NULL) != pdPASS) {
+		printf("Failed to create speed task\r\n");
+	}
+
 	
 	/* Start the scheduler. */
 	vTaskStartScheduler();
