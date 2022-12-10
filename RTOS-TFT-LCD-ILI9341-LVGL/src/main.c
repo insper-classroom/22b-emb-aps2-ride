@@ -24,6 +24,15 @@ LV_FONT_DECLARE(updown_icon);
 #define MY_UP_ARROW_SYMBOL "\xEF\x84\x82"
 #define MY_DOWN_ARROW_SYMBOL "\xEF\x84\x83"
 
+typedef struct  {
+  uint32_t year;
+  uint32_t month;
+  uint32_t day;
+  uint32_t week;
+  uint32_t hour;
+  uint32_t minute;
+  uint32_t second;
+} calendar;
 /************************************************************************/
 /* LCD / LVGL                                                           */
 /************************************************************************/
@@ -110,6 +119,9 @@ QueueHandle_t xQueueScreens;
 QueueHandle_t xQueueTime;
 
 
+void RTC_init(Rtc *rtc, uint32_t id_rtc, calendar t, uint32_t irq_type);
+
+
 /************************************************************************/
 /* lvgl                                                                 */
 /************************************************************************/
@@ -162,8 +174,7 @@ static void miles_handler(lv_event_t * e) {
 	}
 }
 
-static void dropdown_handler(lv_event_t * e)
-{
+static void dropdown_handler(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     lv_obj_t * obj = lv_event_get_target(e);
     if(code == LV_EVENT_VALUE_CHANGED) {
@@ -172,6 +183,24 @@ static void dropdown_handler(lv_event_t * e)
         LV_LOG_USER("Selected month: %s\n", buf);
 		printf("Selected measure: %s\n", buf);
     }
+}
+
+void RTC_Handler(void) {
+    uint32_t ul_status = rtc_get_status(RTC);
+
+	if ((ul_status & RTC_SR_SEC) == RTC_SR_SEC) {
+    	//  Entrou por segundo! 
+    	rtc_clear_status(RTC, RTC_SCCR_SECCLR);
+		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+		xSemaphoreGiveFromISR(xSemaphoreRTC, &xHigherPriorityTaskWoken);
+	}
+
+    rtc_clear_status(RTC, RTC_SCCR_SECCLR);
+    rtc_clear_status(RTC, RTC_SCCR_ALRCLR);
+    rtc_clear_status(RTC, RTC_SCCR_ACKCLR);
+    rtc_clear_status(RTC, RTC_SCCR_TIMCLR);
+    rtc_clear_status(RTC, RTC_SCCR_CALCLR);
+    rtc_clear_status(RTC, RTC_SCCR_TDERRCLR);
 }
 
 void lv_main_scr(void) {
@@ -293,8 +322,6 @@ void lv_main_scr(void) {
 	lv_obj_set_style_text_font(label_duration_number, &noto20, LV_STATE_DEFAULT);
 	lv_obj_set_style_text_color(label_duration_number, lv_color_black(), LV_STATE_DEFAULT);
 	lv_label_set_text_fmt(label_duration_number, "00:00");
-
-	
 }
 
 void lv_settings_scr(void){
@@ -430,6 +457,31 @@ static void task_lcd(void *pvParameters) {
 	}
 }
 
+static void task_rtc(void *pvParameters){
+	uint32_t current_hour, current_min, current_sec;
+	calendar rtc_initial = {2018, 3, 19, 12, 15, 45 ,1};
+	int second_flag = 0;
+	int id;
+
+	RTC_init(RTC, ID_RTC, rtc_initial, RTC_IER_ALREN | RTC_IER_SECEN);
+	rtc_get_time(RTC, &current_hour, &current_min, &current_sec);
+	lv_label_set_text_fmt(label_time_number, "%02d:%02d:%02d", current_hour, current_min, current_sec);    
+
+	for (;;)  {
+		if (xSemaphoreTake(xSemaphoreRTC, 0)) {	
+			printf("Atualiza horario\n");		
+			rtc_get_time(RTC, &current_hour, &current_min, &current_sec);
+			if (second_flag == 0) {
+				lv_label_set_text_fmt(label_time_number, "%02d:%02d:%02d", current_hour, current_min, current_sec);
+				second_flag = 1;
+			} else {
+				lv_label_set_text_fmt(label_time_number, "%02d %02d %02d", current_hour, current_min, current_sec);  
+				second_flag = 0;
+			}
+		}
+	}
+}
+
 /************************************************************************/
 /* configs                                                              */
 /************************************************************************/
@@ -507,6 +559,27 @@ void configure_lvgl(void) {
 	lv_indev_t * my_indev = lv_indev_drv_register(&indev_drv);
 }
 
+void RTC_init(Rtc *rtc, uint32_t id_rtc, calendar t, uint32_t irq_type) {
+	/* Configura o PMC */
+	pmc_enable_periph_clk(ID_RTC);
+
+	/* Default RTC configuration, 24-hour mode */
+	rtc_set_hour_mode(rtc, 0);
+
+	/* Configura data e hora manualmente */
+	rtc_set_date(rtc, t.year, t.month, t.day, t.week);
+	rtc_set_time(rtc, t.hour, t.minute, t.second);
+
+	/* Configure RTC interrupts */
+	NVIC_DisableIRQ(id_rtc);
+	NVIC_ClearPendingIRQ(id_rtc);
+	NVIC_SetPriority(id_rtc, 4);
+	NVIC_EnableIRQ(id_rtc);
+
+	/* Ativa interrupcao via alarme */
+	rtc_enable_interrupt(rtc,  irq_type);
+}
+
 /************************************************************************/
 /* main                                                                 */
 /************************************************************************/
@@ -531,6 +604,10 @@ int main(void) {
 	/* Create task to control oled */
 	if (xTaskCreate(task_lcd, "LCD", TASK_LCD_STACK_SIZE, NULL, TASK_LCD_STACK_PRIORITY, NULL) != pdPASS) {
 		printf("Failed to create lcd task\r\n");
+	}
+
+	if (xTaskCreate(task_rtc, "RTC", TASK_LCD_STACK_SIZE, NULL, TASK_LCD_STACK_PRIORITY, NULL) != pdPASS) {
+		printf("Failed to create rtc task\r\n");
 	}
 	
 	/* Start the scheduler. */
