@@ -24,6 +24,10 @@ LV_FONT_DECLARE(updown_icon);
 #define MY_UP_ARROW_SYMBOL "\xEF\x84\x82"
 #define MY_DOWN_ARROW_SYMBOL "\xEF\x84\x83"
 
+#define CICLE_PIO PIOA
+#define CICLE_PIO_ID ID_PIOA
+#define CICLE_IDX_MASK (1 << 19)
+
 typedef struct  {
   uint32_t year;
   uint32_t month;
@@ -120,6 +124,7 @@ QueueHandle_t xQueueTime;
 
 
 void RTC_init(Rtc *rtc, uint32_t id_rtc, calendar t, uint32_t irq_type);
+static void RTT_init(float freqPrescale, uint32_t IrqNPulses, uint32_t rttIRQSource);
 
 
 /************************************************************************/
@@ -201,6 +206,19 @@ void RTC_Handler(void) {
     rtc_clear_status(RTC, RTC_SCCR_TIMCLR);
     rtc_clear_status(RTC, RTC_SCCR_CALCLR);
     rtc_clear_status(RTC, RTC_SCCR_TDERRCLR);
+}
+
+void cicle_callback(){
+	uint32_t dt = rtt_read_timer_value(RTT);
+	RTT_init(18000, 0, 0);
+	xQueueSendFromISR(xQueueTime, &dt, 0);
+
+	// printf("handler\n");
+	
+	// if(pio_get(ECHO_PIO, PIO_INPUT, ECHO_PIO_PIN_MASK)){
+	// } else {
+	// 	xQueueSendFromISR(xQueueTime, &dt, 0);
+	// }
 }
 
 void lv_main_scr(void) {
@@ -486,6 +504,21 @@ static void task_rtc(void *pvParameters){
 /* configs                                                              */
 /************************************************************************/
 
+void cicle_init(void) {
+	pmc_enable_periph_clk(CICLE_PIO_ID);
+
+	pio_configure(CICLE_PIO, PIO_INPUT, CICLE_IDX_MASK, PIO_PULLUP| PIO_DEBOUNCE);
+
+	pio_handler_set(CICLE_PIO, CICLE_PIO_ID, CICLE_IDX_MASK, PIO_IT_FALL_EDGE, cicle_callback);
+
+	pio_enable_interrupt(CICLE_PIO, CICLE_IDX_MASK);
+
+	pio_get_interrupt_status(CICLE_PIO);
+
+	NVIC_EnableIRQ(CICLE_PIO_ID);
+	NVIC_SetPriority(CICLE_PIO_ID, 4);
+}
+
 static void configure_lcd(void) {
 	/**LCD pin configure on SPI*/
 	pio_configure_pin(LCD_SPI_MISO_PIO, LCD_SPI_MISO_FLAGS);  //
@@ -559,6 +592,34 @@ void configure_lvgl(void) {
 	lv_indev_t * my_indev = lv_indev_drv_register(&indev_drv);
 }
 
+static void RTT_init(float freqPrescale, uint32_t IrqNPulses, uint32_t rttIRQSource) {
+
+  uint16_t pllPreScale = (int) (((float) 32768) / freqPrescale);
+	
+  rtt_sel_source(RTT, false);
+  rtt_init(RTT, pllPreScale);
+  
+  if (rttIRQSource & RTT_MR_ALMIEN) {
+	uint32_t ul_previous_time;
+  	ul_previous_time = rtt_read_timer_value(RTT);
+  	while (ul_previous_time == rtt_read_timer_value(RTT));
+  	rtt_write_alarm_time(RTT, IrqNPulses+ul_previous_time);
+  }
+
+  /* config NVIC */
+  NVIC_DisableIRQ(RTT_IRQn);
+  NVIC_ClearPendingIRQ(RTT_IRQn);
+  NVIC_SetPriority(RTT_IRQn, 4);
+  NVIC_EnableIRQ(RTT_IRQn);
+
+  /* Enable RTT interrupt */
+  if (rttIRQSource & (RTT_MR_RTTINCIEN | RTT_MR_ALMIEN))
+	rtt_enable_interrupt(RTT, rttIRQSource);
+  else
+	rtt_disable_interrupt(RTT, RTT_MR_RTTINCIEN | RTT_MR_ALMIEN);
+		  
+}
+
 void RTC_init(Rtc *rtc, uint32_t id_rtc, calendar t, uint32_t irq_type) {
 	/* Configura o PMC */
 	pmc_enable_periph_clk(ID_RTC);
@@ -595,6 +656,7 @@ int main(void) {
 	configure_lvgl();
 	ili9341_set_orientation(ILI9341_FLIP_Y | ILI9341_SWITCH_XY);
 
+	cicle_init();
 
 	xSemaphoreRTC = xSemaphoreCreateBinary();
 
