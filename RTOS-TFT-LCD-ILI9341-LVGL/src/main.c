@@ -133,6 +133,8 @@ SemaphoreHandle_t xSemaphoreRTC;
 QueueHandle_t xQueueScreens;
 QueueHandle_t xQueueTime;
 
+SemaphoreHandle_t xMutex;
+
 
 void RTC_init(Rtc *rtc, uint32_t id_rtc, calendar t, uint32_t irq_type);
 static void RTT_init(float freqPrescale, uint32_t IrqNPulses, uint32_t rttIRQSource);
@@ -221,7 +223,7 @@ void RTC_Handler(void) {
 
 void cicle_callback(){
 	uint32_t dt = rtt_read_timer_value(RTT);
-	RTT_init(18000, 0, 0);
+	RTT_init(100, 0, 0);
 	xQueueSendFromISR(xQueueTime, &dt, 0);
 
 	// printf("handler\n");
@@ -432,8 +434,15 @@ void lv_settings_scr(void){
 	lv_obj_set_style_text_font(label_miles_btn, &noto20, LV_STATE_DEFAULT);
 	lv_label_set_text_fmt(label_miles_btn, "milhas");
 	lv_obj_center(label_miles_btn);
-
 }
+
+void printfMutex(char *s) {
+  xSemaphoreTake( xMutex, portMAX_DELAY );
+  printf( "%s", s);
+  fflush( stdout );
+  xSemaphoreGive( xMutex );
+}
+
 /************************************************************************/
 /* TASKS                                                                */
 /************************************************************************/
@@ -511,20 +520,22 @@ static void task_rtc(void *pvParameters){
 }
 
 static void task_speed(void *pvParameters){
-	int instant_speed = 0;
+	float instant_speed;
 	int dt_rtt;
 	float dt;
-	float w, r;
 	int pol = 20;
 
 	for (;;)  {
 		if (xQueueReceive(xQueueTime, &dt_rtt, 0)) {
 			printf("Dt rtt: %d\n",dt_rtt);
-			// dt = dt_rtt / 18000;
-			// w = 2 * 3.14 / dt;
-			// r = pol * 0.0254;
-			// instant_speed = w * r;
-			// printf("Instant speed: %d\n",instant_speed);
+
+			dt = 100.0 / dt_rtt; // Frequencia da roda
+			instant_speed = (float) (pol/2) * 0.0254 * 2 * PI * dt * 3.6 ; // r * w
+
+			xSemaphoreTake( xMutex, portMAX_DELAY );
+			printf("Dt: %f\n", dt);
+			printf("Instant speed: %f\n", 10 * instant_speed);
+			xSemaphoreGive( xMutex );
 		}		
 	}
 }
@@ -565,9 +576,12 @@ static void task_simulador(void *pvParameters) {
 
 		} else {
 			vel = 5;
-			printf("[SIMU] CONSTANTE: %d \n", (int) (10*vel));
+			// printf("[SIMU] CONSTANTE: %d \n", (int) (10*vel));
 		}
         f = kmh_to_hz(vel, RAIO);
+		xSemaphoreTake( xMutex, portMAX_DELAY );
+		printf("frequencia: %f\n", f);
+		xSemaphoreGive( xMutex );
         int t = 965*(1.0/f); //UTILIZADO 965 como multiplicador ao invés de 1000
                              //para compensar o atraso gerado pelo Escalonador do freeRTOS
         delay_ms(t);
@@ -581,7 +595,7 @@ static void task_simulador(void *pvParameters) {
 void cicle_init(void) {
 	pmc_enable_periph_clk(CICLE_PIO_ID);
 
-	pio_configure(CICLE_PIO, PIO_INPUT, CICLE_IDX_MASK, PIO_PULLUP| PIO_DEBOUNCE);
+	pio_configure(CICLE_PIO, PIO_INPUT, CICLE_IDX_MASK, 0);
 
 	pio_handler_set(CICLE_PIO, CICLE_PIO_ID, CICLE_IDX_MASK, PIO_IT_FALL_EDGE, cicle_callback);
 
@@ -736,15 +750,16 @@ int main(void) {
 
 	xQueueScreens = xQueueCreate(32, sizeof(uint32_t));
 	xQueueTime = xQueueCreate(32, sizeof(uint32_t));
+	xMutex = xSemaphoreCreateMutex();
 
 	/* Create task to control oled */
-	if (xTaskCreate(task_lcd, "LCD", TASK_LCD_STACK_SIZE, NULL, TASK_LCD_STACK_PRIORITY, NULL) != pdPASS) {
-		printf("Failed to create lcd task\r\n");
-	}
+	// if (xTaskCreate(task_lcd, "LCD", TASK_LCD_STACK_SIZE, NULL, TASK_LCD_STACK_PRIORITY, NULL) != pdPASS) {
+	// 	printf("Failed to create lcd task\r\n");
+	// }
 
-	if (xTaskCreate(task_rtc, "RTC", TASK_LCD_STACK_SIZE, NULL, TASK_LCD_STACK_PRIORITY, NULL) != pdPASS) {
-		printf("Failed to create rtc task\r\n");
-	}
+	// if (xTaskCreate(task_rtc, "RTC", TASK_LCD_STACK_SIZE, NULL, TASK_LCD_STACK_PRIORITY, NULL) != pdPASS) {
+	// 	printf("Failed to create rtc task\r\n");
+	// }
 
 	if (xTaskCreate(task_simulador, "SIMUL", TASK_SIMULATOR_STACK_SIZE, NULL, TASK_SIMULATOR_STACK_PRIORITY, NULL) != pdPASS) {
         printf("Failed to create lcd task\r\n");
