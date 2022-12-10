@@ -2282,6 +2282,9 @@
     <Compile Include="src\playpause_icon.c">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="src\ride.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="src\settings_icon.c">
       <SubType>compile</SubType>
     </Compile>

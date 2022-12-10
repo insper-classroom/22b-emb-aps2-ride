@@ -9,6 +9,7 @@
 #include "touch/touch.h"
 #include "imgUX1.h"
 #include "settings_img.h"
+#include "ride.h"
 
 LV_FONT_DECLARE(noto50);
 LV_FONT_DECLARE(noto30);
@@ -42,6 +43,7 @@ static lv_disp_drv_t disp_drv;          /*A variable to hold the drivers. Must b
 static lv_indev_drv_t indev_drv;
 
 // declarar a tela como global e estática
+static lv_obj_t * loading_scr;  // load screen 0
 static lv_obj_t * main_scr;  // main screen 1
 static lv_obj_t * settings_scr;  // settings screen 2
 
@@ -101,6 +103,9 @@ extern void vApplicationTickHook(void) { }
 extern void vApplicationMallocFailedHook(void) {
 	configASSERT( ( volatile void * ) NULL );
 }
+
+QueueHandle_t xQueueScreens;
+
 
 /************************************************************************/
 /* lvgl                                                                 */
@@ -361,25 +366,39 @@ void lv_settings_scr(void){
 
 static void task_lcd(void *pvParameters) {
 	int px, py;
-	
-	// lv_obj_t * img = lv_img_create(lv_scr_act());
-	// lv_img_set_src(img, &imgUX1);
-	// lv_obj_align(img, LV_ALIGN_CENTER, 0, 0);
 
-	// Cria main screen
+	// Cria loading screens
+
+	lv_color_t bege = lv_color_hex(0xF5FFF4);
+
+	loading_scr = lv_obj_create(NULL);
+	lv_obj_set_style_bg_color(loading_scr, bege, LV_PART_MAIN );
+	lv_obj_t * img = lv_img_create(loading_scr);
+	lv_img_set_src(img, &ride);
+	lv_obj_align(img, LV_ALIGN_CENTER, 0, 0);
+	lv_scr_load(loading_scr); // exibe tela 0
+
 	main_scr = lv_obj_create(NULL);
 	settings_scr = lv_obj_create(NULL);
-
 	lv_main_scr();
 	lv_settings_scr();
 
 	// lv_scr_load(main_scr); // exibe tela 1
-	lv_scr_load(settings_scr); // exibe tela 2
+	// lv_scr_load(settings_scr); // exibe tela 2
+
+
+	int screen = 0;
 
 	for (;;)  {
 		lv_tick_inc(50);
 		lv_task_handler();
 		vTaskDelay(50);
+
+		if (screen == 0) {
+			vTaskDelay(5000);
+			screen = 1;
+			lv_scr_load(main_scr); // exibe tela 1
+		}
 	}
 }
 
