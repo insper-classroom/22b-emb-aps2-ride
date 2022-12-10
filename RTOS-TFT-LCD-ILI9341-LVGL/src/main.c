@@ -104,7 +104,10 @@ extern void vApplicationMallocFailedHook(void) {
 	configASSERT( ( volatile void * ) NULL );
 }
 
+SemaphoreHandle_t xSemaphoreRTC;
+
 QueueHandle_t xQueueScreens;
+QueueHandle_t xQueueTime;
 
 
 /************************************************************************/
@@ -115,7 +118,22 @@ static void settings_handler(lv_event_t * e) {
 	lv_event_code_t code = lv_event_get_code(e);
 
 	if(code == LV_EVENT_CLICKED) {
-		printf("Clicked\n");
+		int scr_idx = 2;
+		BaseType_t xHigherPriorityTaskWoken = pdTRUE;
+		xQueueSendFromISR(xQueueScreens, &scr_idx, &xHigherPriorityTaskWoken);
+	}
+	else if (code == LV_EVENT_VALUE_CHANGED) {
+		printf("Toggled\n");
+	}
+}
+
+static void back_handler(lv_event_t * e) {
+	lv_event_code_t code = lv_event_get_code(e);
+
+	if (code == LV_EVENT_CLICKED) {
+		int scr_idx = 1;
+		BaseType_t xHigherPriorityTaskWoken = pdTRUE;
+		xQueueSendFromISR(xQueueScreens, &scr_idx, &xHigherPriorityTaskWoken);
 	}
 	else if(code == LV_EVENT_VALUE_CHANGED) {
 		printf("Toggled\n");
@@ -316,7 +334,7 @@ void lv_settings_scr(void){
 	lv_obj_set_width(back_btn, 32); 
 	lv_obj_set_height(back_btn, 32);
 
-	lv_obj_add_event_cb(back_btn, km_handler, LV_EVENT_ALL, NULL);
+	lv_obj_add_event_cb(back_btn, back_handler, LV_EVENT_ALL, NULL);
 	lv_obj_align(back_btn, LV_ALIGN_OUT_LEFT_TOP, 5, 5);
 	lv_obj_add_style(back_btn, &style, 0);
 
@@ -395,9 +413,19 @@ static void task_lcd(void *pvParameters) {
 		vTaskDelay(50);
 
 		if (screen == 0) {
+			lv_scr_load(loading_scr); // exibe tela 0
 			vTaskDelay(5000);
 			screen = 1;
 			lv_scr_load(main_scr); // exibe tela 1
+		}
+
+		if (xQueueReceive(xQueueScreens, &screen, 10)) {
+			printf("Screen: %d\n", screen);
+			if (screen == 1) {
+				lv_scr_load(main_scr); // exibe tela 1
+			} else if (screen == 2) {
+				lv_scr_load(settings_scr); // exibe tela 2
+			}
 		}
 	}
 }
@@ -493,6 +521,12 @@ int main(void) {
 	configure_touch();
 	configure_lvgl();
 	ili9341_set_orientation(ILI9341_FLIP_Y | ILI9341_SWITCH_XY);
+
+
+	xSemaphoreRTC = xSemaphoreCreateBinary();
+
+	xQueueScreens = xQueueCreate(32, sizeof(uint32_t));
+	xQueueTime = xQueueCreate(32, sizeof(uint32_t));
 
 	/* Create task to control oled */
 	if (xTaskCreate(task_lcd, "LCD", TASK_LCD_STACK_SIZE, NULL, TASK_LCD_STACK_PRIORITY, NULL) != pdPASS) {
