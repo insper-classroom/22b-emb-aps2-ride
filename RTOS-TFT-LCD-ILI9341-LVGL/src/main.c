@@ -4,6 +4,7 @@
 
 #include <asf.h>
 #include <string.h>
+#include <stdlib.h>
 #include "ili9341.h"
 #include "lvgl.h"
 #include "touch/touch.h"
@@ -142,6 +143,7 @@ QueueHandle_t xQueueScreens;
 QueueHandle_t xQueueTime;
 QueueHandle_t xQueueRoute;
 QueueHandle_t xQueueSpeed;
+QueueHandle_t xQueueSize;
 
 SemaphoreHandle_t xMutex;
 
@@ -213,19 +215,22 @@ static void sw_handler(lv_event_t * e) {
     LV_UNUSED(obj);
     if(code == LV_EVENT_VALUE_CHANGED) {
         LV_LOG_USER("State: %s\n", lv_obj_has_state(obj, LV_STATE_CHECKED) ? "On" : "Off");
+		xSemaphoreGiveFromISR(xSemaphoreMeasure, 0);
     }
-	xSemaphoreGiveFromISR(xSemaphoreMeasure, 0);
-}
 
+}
 
 static void dropdown_handler(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
     lv_obj_t * obj = lv_event_get_target(e);
     if(code == LV_EVENT_VALUE_CHANGED) {
-        char buf[32];
+        char buf[5];
         lv_roller_get_selected_str(obj, buf, sizeof(buf));
-        LV_LOG_USER("Selected month: %s\n", buf);
-		printf("Selected measure: %s\n", buf);
+		if (buf[0] != '\0') {
+			int pol = atoi(buf);
+			BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+			xQueueSendFromISR(xQueueSize, &pol, &xHigherPriorityTaskWoken);
+		}
     }
 }
 
@@ -617,13 +622,16 @@ static void task_speed(void *pvParameters) {
 	speed_struct speed;
 	int dt_rtt;
 	float dt;
+	int temp;
 	int pol = 20;
 	int last_speed = 0;
 	float fator = 1.0;
 
 	for (;;) {
-
-		if (xSemaphoreTake(xSemaphoreMeasure, 0)){
+		xQueueReceive(xQueueSize, &pol, 0);	// Atualiza o valor da polegada se necessário
+		//printf("Polegada: %d"\n);
+		
+		if (xSemaphoreTake(xSemaphoreMeasure, 0)) {
 			if (fator > 0.9) {
 				lv_label_set_text_fmt(label_speed_txt, "mi/h",speed.instant_speed);
 				lv_label_set_text_fmt(label_average_speed_txt, "mi/h",speed.instant_speed);
@@ -639,7 +647,6 @@ static void task_speed(void *pvParameters) {
 
 		if (xQueueReceive(xQueueTime, &dt_rtt, 0)) {
 			// printf("Dt rtt: %d\n",dt_rtt);
-
 			speed.dt = 500.0 / dt_rtt; // Frequencia da roda
 			speed.instant_speed = (pol/2) * 0.0254 * 2 * PI * speed.dt * 3.6 * 10 * fator; // r * w
 			
@@ -874,6 +881,7 @@ int main(void) {
 	xQueueTime = xQueueCreate(32, sizeof(uint32_t));
 	xQueueRoute = xQueueCreate(32, sizeof(uint32_t));
 	xQueueSpeed = xQueueCreate(32, sizeof(speed_struct));
+	xQueueSize = xQueueCreate(32, sizeof(uint32_t));
 	xMutex = xSemaphoreCreateMutex();
 
 	/* Create task to control oled */
