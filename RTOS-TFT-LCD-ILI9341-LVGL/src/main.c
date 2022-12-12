@@ -50,12 +50,15 @@ typedef struct  {
   uint32_t minute;
   uint32_t second;
 } calendar;
+
+struct {
+	float freq;
+	int instant_speed;
+} typedef speed_struct;
+
 /************************************************************************/
 /* LCD / LVGL                                                           */
 /************************************************************************/
-
-// #define LV_HOR_RES_MAX          (320)
-// #define LV_VER_RES_MAX          (240)
 
 #define LV_HOR_RES_MAX          (240)
 #define LV_VER_RES_MAX          (320)
@@ -69,9 +72,9 @@ static lv_disp_drv_t disp_drv;          /*A variable to hold the drivers. Must b
 static lv_indev_drv_t indev_drv;
 
 // declarar a tela como global e estática
-static lv_obj_t * loading_scr;  // load screen 0
-static lv_obj_t * main_scr;  // main screen 1
-static lv_obj_t * settings_scr;  // settings screen 2
+static lv_obj_t * loading_scr;  	// load screen 0
+static lv_obj_t * main_scr;  		// main screen 1
+static lv_obj_t * settings_scr; 	// settings screen 2
 
 //TELA 1
 
@@ -102,11 +105,6 @@ static  lv_obj_t * label_markdown_rim;
 static  lv_obj_t * label_measure;
 static  lv_obj_t * label_km;
 static  lv_obj_t * label_miles;
-
-struct {
-	float dt;
-	int instant_speed;
-} typedef speed_struct;
 
 
 /************************************************************************/
@@ -145,8 +143,6 @@ QueueHandle_t xQueueRoute;
 QueueHandle_t xQueueSpeed;
 QueueHandle_t xQueueSize;
 
-SemaphoreHandle_t xMutex;
-
 
 void RTC_init(Rtc *rtc, uint32_t id_rtc, calendar t, uint32_t irq_type);
 static void RTT_init(float freqPrescale, uint32_t IrqNPulses, uint32_t rttIRQSource);
@@ -164,35 +160,24 @@ static void settings_handler(lv_event_t * e) {
 		BaseType_t xHigherPriorityTaskWoken = pdTRUE;
 		xQueueSendFromISR(xQueueScreens, &scr_idx, &xHigherPriorityTaskWoken);
 	}
-	else if (code == LV_EVENT_VALUE_CHANGED) {
-		printf("Toggled\n");
-	}
 }
 
 static void play_pause_handler(lv_event_t * e) {
 	lv_event_code_t code = lv_event_get_code(e);
 
 	if(code == LV_EVENT_CLICKED) {
-		printf("Clicked\n");
 		int btn_id = 0;
 		BaseType_t xHigherPriorityTaskWoken = pdTRUE;
 		xQueueSendFromISR(xQueueRoute, &btn_id, &xHigherPriorityTaskWoken);
-	}
-	else if(code == LV_EVENT_VALUE_CHANGED) {
-		printf("Toggled\n");
 	}
 }
 static void restart_handler(lv_event_t * e) {
 	lv_event_code_t code = lv_event_get_code(e);
 
 	if(code == LV_EVENT_CLICKED) {
-		printf("Clicked\n");
 		int btn_id = 1;
 		BaseType_t xHigherPriorityTaskWoken = pdTRUE;
 		xQueueSendFromISR(xQueueRoute, &btn_id, &xHigherPriorityTaskWoken);
-	}
-	else if(code == LV_EVENT_VALUE_CHANGED) {
-		printf("Toggled\n");
 	}
 }
 
@@ -204,9 +189,6 @@ static void back_handler(lv_event_t * e) {
 		BaseType_t xHigherPriorityTaskWoken = pdTRUE;
 		xQueueSendFromISR(xQueueScreens, &scr_idx, &xHigherPriorityTaskWoken);
 	}
-	else if(code == LV_EVENT_VALUE_CHANGED) {
-		printf("Toggled\n");
-	}
 }
 
 static void sw_handler(lv_event_t * e) {
@@ -214,10 +196,8 @@ static void sw_handler(lv_event_t * e) {
     lv_obj_t * obj = lv_event_get_target(e);
     LV_UNUSED(obj);
     if(code == LV_EVENT_VALUE_CHANGED) {
-        LV_LOG_USER("State: %s\n", lv_obj_has_state(obj, LV_STATE_CHECKED) ? "On" : "Off");
 		xSemaphoreGiveFromISR(xSemaphoreMeasure, 0);
     }
-
 }
 
 static void dropdown_handler(lv_event_t * e){
@@ -257,18 +237,11 @@ void cicle_callback(){
 	uint32_t dt = rtt_read_timer_value(RTT);
 	RTT_init(500, 0, 0);
 	xQueueSendFromISR(xQueueTime, &dt, 0);
-
-	// printf("handler\n");
-	
-	// if(pio_get(ECHO_PIO, PIO_INPUT, ECHO_PIO_PIN_MASK)){
-	// } else {
-	// 	xQueueSendFromISR(xQueueTime, &dt, 0);
-	// }
 }
 
 void lv_main_scr(void) {
 
-	printf("Criando widgets main screen\n");
+	// Estilo
 	static lv_style_t style;
 	lv_style_init(&style);
 	lv_style_set_bg_color(&style, lv_color_white());
@@ -302,7 +275,6 @@ void lv_main_scr(void) {
 	lv_obj_set_style_text_font(label_play_pause_btn, &playpause_icon, LV_STATE_DEFAULT);
 	lv_label_set_text_fmt(label_play_pause_btn, MY_PLAY_SYMBOL);
 	lv_obj_center(label_play_pause_btn);
-
 
 	// Restart button
 	lv_obj_t * restart_btn = lv_imgbtn_create(main_scr);
@@ -388,7 +360,7 @@ void lv_main_scr(void) {
 }
 
 void lv_settings_scr(void){
-	printf("Criando widgets settings screen\n");
+	// Estilo
 	static lv_style_t style;
 	lv_style_init(&style);
 	lv_style_set_bg_color(&style, lv_color_white());
@@ -402,7 +374,7 @@ void lv_settings_scr(void){
 	lv_obj_set_style_text_color(label_bike_rim, lv_color_black(), LV_STATE_DEFAULT);
 	lv_label_set_text_fmt(label_bike_rim, "Tamanho do aro");
 
-	// Rims Markdowns
+	// Rim's Dropdown menu
 	lv_obj_t * roller1 = lv_roller_create(settings_scr);
     lv_roller_set_options(roller1,
                           "14''\n"
@@ -439,21 +411,11 @@ void lv_settings_scr(void){
 	lv_obj_set_style_text_color(label_measure, lv_color_black(), LV_STATE_DEFAULT);
 	lv_label_set_text_fmt(label_measure, "Unidade");
 
+	// Switch
 	lv_obj_t * sw;
-
     sw = lv_switch_create(settings_scr);
     lv_obj_add_event_cb(sw, sw_handler, LV_EVENT_ALL, NULL);
 	lv_obj_align(sw, LV_ALIGN_CENTER, 0, 70);
-
-
-	// lv_obj_t *sw1 = lv_switch_create(lv_scr_act(), NULL);
-    // lv_obj_align(sw1, NULL, LV_ALIGN_CENTER, 0, 70);
-    // lv_obj_add_event_cb(sw1, switch_handler, LV_EVENT_ALL, NULL);
-
-    // /*Copy the first switch and turn it ON*/
-    // lv_obj_t *sw2 = lv_switch_create(lv_scr_act(), sw1);
-    // lv_switch_on(sw2, LV_ANIM_ON);
-    // lv_obj_align(sw2, NULL, LV_ALIGN_CENTER, 0, 70);
 
 	// Km label
 	label_km = lv_label_create(settings_scr);
@@ -472,13 +434,6 @@ void lv_settings_scr(void){
 	lv_label_set_text_fmt(label_miles, "milhas");
 }
 
-void printfMutex(char *s) {
-  xSemaphoreTake( xMutex, portMAX_DELAY );
-  printf( "%s", s);
-  fflush( stdout );
-  xSemaphoreGive( xMutex );
-}
-
 /************************************************************************/
 /* TASKS                                                                */
 /************************************************************************/
@@ -486,38 +441,38 @@ void printfMutex(char *s) {
 static void task_lcd(void *pvParameters) {
 	int px, py;
 
-	// Cria loading screens
-
-	lv_color_t bege = lv_color_hex(0xF5FFF4);
+	// Cria loading screen
+	lv_color_t background_color = lv_color_hex(0xF5FFF4);
 
 	loading_scr = lv_obj_create(NULL);
-	lv_obj_set_style_bg_color(loading_scr, bege, LV_PART_MAIN );
+	lv_obj_set_style_bg_color(loading_scr, background_color, LV_PART_MAIN );
 	lv_obj_t * img = lv_img_create(loading_scr);
 	lv_img_set_src(img, &ride);
 	lv_obj_align(img, LV_ALIGN_CENTER, 0, 0);
-	lv_scr_load(loading_scr); // exibe tela 0
 
+	// Carrega tela de loading
+	lv_scr_load(loading_scr); 
+	
+	// Cria as demais telas
 	main_scr = lv_obj_create(NULL);
 	settings_scr = lv_obj_create(NULL);
 	lv_main_scr();
 	lv_settings_scr();
 
-	int screen = 0;
-
+	int screen = 0; // 0 -> loading screen, 1 -> main screen, 2 -> settings screen
 	for (;;)  {
 		lv_tick_inc(50);
 		lv_task_handler();
 		vTaskDelay(50);
 
+		// Em caso de loading screen, tem-se um delay para dar a impressão de carregamento e mostrar a logo
 		if (screen == 0) {
-			lv_scr_load(loading_scr); // exibe tela 0
 			vTaskDelay(5000);
-			screen = 1;
 			lv_scr_load(main_scr); // exibe tela 1
+			screen = 1;
 		}
 
 		if (xQueueReceive(xQueueScreens, &screen, 10)) {
-			printf("Screen: %d\n", screen);
 			if (screen == 1) {
 				lv_scr_load(main_scr); // exibe tela 1
 			} else if (screen == 2) {
@@ -528,16 +483,20 @@ static void task_lcd(void *pvParameters) {
 }
 
 static void task_rtc(void *pvParameters){
+	// RTC
 	uint32_t current_hour, current_min, current_sec;
-	calendar rtc_initial = {2018, 3, 19, 12, 15, 45 ,1};
+	calendar rtc_initial = {2022, 12, 12, 12, 15, 0 ,0};
+	
+	// Pisca ':' do tempo
 	int second_flag = 0;
-	int id;
 
+	// Init RTC e escrita do horario
 	RTC_init(RTC, ID_RTC, rtc_initial, RTC_IER_ALREN | RTC_IER_SECEN);
 	rtc_get_time(RTC, &current_hour, &current_min, &current_sec);
 	lv_label_set_text_fmt(label_time_number, "%02d:%02d:%02d", current_hour, current_min, current_sec);    
 
 	for (;;)  {
+		// Atualiza horario a cada segundo
 		if (xSemaphoreTake(xSemaphoreRTC, 0)) {		
 			rtc_get_time(RTC, &current_hour, &current_min, &current_sec);
 			if (second_flag == 0) {
@@ -554,18 +513,22 @@ static void task_rtc(void *pvParameters){
 static void task_route(void *pvParameters) {
 	int route_on = 0; // 0 -> não escrevendo, 1 -> escrevendo
 	int btn_id; // 0 -> play/pause, 1 -> restart
+	
+	// Variáveis da velocidade e percurso
 	speed_struct speed;
 	int speed_count = 0;
 	int speed_sum = 0;
 	int average_speed = 0;
 	float distance = 0;
 
+	// Variaveis do tempo de percurso
 	int seconds = 0;
 	int minutes = 0;
 	int hours = 0;
 	int second_flag = 0;
-
+	
 	for (;;) {
+		//Comeca o timer da duração, apenas mostrando as horas e os minutos
 		if (xSemaphoreTake(xSemaphoreDuration, 0) && route_on) {
 			seconds++;
 			hours = seconds / 3600;
@@ -577,10 +540,11 @@ static void task_route(void *pvParameters) {
 				lv_label_set_text_fmt(label_duration_number, "%02d:%02d", hours, minutes);
 				second_flag = 1;
 			}
-			printf("seconds: %d, minutes: %d, hours: %d\n", seconds, minutes, hours);
 		}
 
+		// Lógica de começar, pausar e reiniciar o percurso
 		if (xQueueReceive(xQueueRoute, &btn_id, 10)) {
+			// Play/Pause
 			if (btn_id == 0) {
 				route_on = !route_on;
 				if (route_on) {
@@ -590,6 +554,7 @@ static void task_route(void *pvParameters) {
 				}
 			}
 			
+			// Se o botão de Reset for apertado, as variáveis são resetadas e voltadas as seus valores originais (0)
 			if (btn_id == 1) {
 				route_on = 0; // Reinicia
 				speed_count = 0;
@@ -603,40 +568,38 @@ static void task_route(void *pvParameters) {
 			}
 		}
 
+		// Calcula a velocidade média e a distância a cada medida nova de velocidade instantânea
 		if (xQueueReceive(xQueueSpeed, &speed, 10) && route_on) {
 			speed_count++;
 			speed_sum += speed.instant_speed;
 			average_speed = speed_sum / speed_count;
 			lv_label_set_text_fmt(label_average_speed_number, "%02d", average_speed);
 
-			distance += speed.instant_speed / (speed.dt * 3600);		
+			distance += speed.instant_speed / (speed.freq * 3600);		
 			lv_label_set_text_fmt(label_distance_number, "%02d", (int) distance);
-
-			// printf("Distancia atual: %f\n", distance);
 			
 		}
 	}
 }
 
 static void task_speed(void *pvParameters) {
-	speed_struct speed;
-	int dt_rtt;
-	float dt;
-	int temp;
-	int pol = 20;
-	int last_speed = 0;
-	float fator = 1.0;
+	speed_struct speed; // struct da velocidade e frequencia instantânea
+	int dt_rtt; 		// ticks do rtt
+	int pol = 20; 		// polegada da roda, inicia com 20''
+	int last_speed = 0;	// velocidade final
+	float fator = 1.0;  // fator que varia com a medida
 
 	for (;;) {
-		xQueueReceive(xQueueSize, &pol, 0);	// Atualiza o valor da polegada se necessário
-		//printf("Polegada: %d"\n);
+		// Atualiza o tamanho do aro da roda da bicicleta
+		xQueueReceive(xQueueSize, &pol, 0);
 		
+		// Tipo de unidade de medida de comprimento a ser escolhida, neste caso entre kilômetros ou milhas
 		if (xSemaphoreTake(xSemaphoreMeasure, 0)) {
 			if (fator > 0.9) {
 				lv_label_set_text_fmt(label_speed_txt, "mi/h",speed.instant_speed);
 				lv_label_set_text_fmt(label_average_speed_txt, "mi/h",speed.instant_speed);
 				lv_label_set_text_fmt(label_distance_txt, "mi",speed.instant_speed);
-				fator = 1 / 1.609;
+				fator = 1 / 1.609; // conversão km -> mi
 			} else {
 				lv_label_set_text_fmt(label_speed_txt, "Km/h",speed.instant_speed);
 				lv_label_set_text_fmt(label_average_speed_txt, "Km/h",speed.instant_speed);
@@ -645,13 +608,12 @@ static void task_speed(void *pvParameters) {
 			}
 		}
 
+		// Usa RTT para calcular velocidade instantanea e manda para task route
 		if (xQueueReceive(xQueueTime, &dt_rtt, 0)) {
-			// printf("Dt rtt: %d\n",dt_rtt);
-			speed.dt = 500.0 / dt_rtt; // Frequencia da roda
-			speed.instant_speed = (pol/2) * 0.0254 * 2 * PI * speed.dt * 3.6 * 10 * fator; // r * w
-			
-			// printf("Instant Speed: %d\n",speed.instant_speed);
-			
+			speed.freq = 500.0 / dt_rtt;
+			speed.instant_speed = (pol/2) * 0.0254 * 2 * PI * speed.freq * 3.6 * 10 * fator; // r * w
+
+			// Atualiza indicativo de aceleração conforme última velocidade		
 			if (speed.instant_speed > last_speed) {
 				lv_label_set_text_fmt(label_up_arrow, MY_UP_ARROW_SYMBOL);
 			} else if (speed.instant_speed == last_speed) {
@@ -706,9 +668,6 @@ static void task_simulador(void *pvParameters) {
 			// printf("[SIMU] CONSTANTE: %d \n", (int) (10*vel));
 		}
         f = kmh_to_hz(vel, RAIO);
-		xSemaphoreTake( xMutex, portMAX_DELAY );
-		// printf("frequencia: %f\n", f);
-		xSemaphoreGive( xMutex );
         int t = 965*(1.0/f); //UTILIZADO 965 como multiplicador ao invés de 1000
                              //para compensar o atraso gerado pelo Escalonador do freeRTOS
         delay_ms(t);
@@ -727,7 +686,6 @@ void cicle_init(void) {
 	pio_handler_set(CICLE_PIO, CICLE_PIO_ID, CICLE_IDX_MASK, PIO_IT_FALL_EDGE, cicle_callback);
 
 	pio_enable_interrupt(CICLE_PIO, CICLE_IDX_MASK);
-
 	pio_get_interrupt_status(CICLE_PIO);
 
 	NVIC_EnableIRQ(CICLE_PIO_ID);
@@ -736,7 +694,7 @@ void cicle_init(void) {
 
 static void configure_lcd(void) {
 	/**LCD pin configure on SPI*/
-	pio_configure_pin(LCD_SPI_MISO_PIO, LCD_SPI_MISO_FLAGS);  //
+	pio_configure_pin(LCD_SPI_MISO_PIO, LCD_SPI_MISO_FLAGS);
 	pio_configure_pin(LCD_SPI_MOSI_PIO, LCD_SPI_MOSI_FLAGS);
 	pio_configure_pin(LCD_SPI_SPCK_PIO, LCD_SPI_SPCK_FLAGS);
 	pio_configure_pin(LCD_SPI_NPCS_PIO, LCD_SPI_NPCS_FLAGS);
@@ -882,7 +840,6 @@ int main(void) {
 	xQueueRoute = xQueueCreate(32, sizeof(uint32_t));
 	xQueueSpeed = xQueueCreate(32, sizeof(speed_struct));
 	xQueueSize = xQueueCreate(32, sizeof(uint32_t));
-	xMutex = xSemaphoreCreateMutex();
 
 	/* Create task to control oled */
 	if (xTaskCreate(task_lcd, "LCD", TASK_LCD_STACK_SIZE, NULL, TASK_LCD_STACK_PRIORITY, NULL) != pdPASS) {
@@ -893,9 +850,6 @@ int main(void) {
 		printf("Failed to create rtc task\r\n");
 	}
 
-	if (xTaskCreate(task_simulador, "SIMUL", TASK_SIMULATOR_STACK_SIZE, NULL, TASK_SIMULATOR_STACK_PRIORITY, NULL) != pdPASS) {
-        printf("Failed to create lcd task\r\n");
-    }
 
 	if (xTaskCreate(task_speed, "speed", TASK_LCD_STACK_SIZE, NULL, TASK_LCD_STACK_PRIORITY, NULL) != pdPASS) {
 		printf("Failed to create speed task\r\n");
@@ -904,6 +858,11 @@ int main(void) {
 	if (xTaskCreate(task_route, "route", TASK_LCD_STACK_SIZE, NULL, TASK_LCD_STACK_PRIORITY, NULL) != pdPASS) {
 		printf("Failed to create route task\r\n");
 	}
+
+	if (xTaskCreate(task_simulador, "SIMUL", TASK_SIMULATOR_STACK_SIZE, NULL, TASK_SIMULATOR_STACK_PRIORITY, NULL) != pdPASS) {
+        printf("Failed to create lcd task\r\n");
+    }
+
 	
 	/* Start the scheduler. */
 	vTaskStartScheduler();
