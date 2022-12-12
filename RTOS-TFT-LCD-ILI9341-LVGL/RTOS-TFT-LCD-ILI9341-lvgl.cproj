@@ -2313,6 +2313,12 @@
     <Compile Include="src\playpause_icon.c">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="src\restart32.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\restart40.c">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="src\ride.h">
       <SubType>compile</SubType>
     </Compile>

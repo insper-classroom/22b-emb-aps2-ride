@@ -26,10 +26,12 @@ LV_FONT_DECLARE(noto20);
 LV_FONT_DECLARE(settings_icon);
 LV_FONT_DECLARE(playpause_icon);
 LV_FONT_DECLARE(speed40);
+LV_FONT_DECLARE(restart32);
 
 #define MY_SETTINGS_SYMBOL "\xEF\x80\x93"
 #define MY_PLAY_SYMBOL "\xEF\x81\x8B"
 #define MY_PAUSE_SYMBOL "\xEF\x81\x8C"
+#define MY_RESTART_SYMBOL "\xEF\x8B\xB9"
 #define MY_UP_ARROW_SYMBOL "\xEF\x84\x82"
 #define MY_DOWN_ARROW_SYMBOL "\xEF\x84\x83"
 #define MY_MINUS_SYMBOL "\xEF\x81\xA8"
@@ -76,8 +78,8 @@ static lv_obj_t * settings_scr;  // settings screen 2
 //TELA 1
 
 static  lv_obj_t * label_settings_btn;
-static  lv_obj_t * label_play_btn;
-static  lv_obj_t * label_pause_btn;
+static  lv_obj_t * label_play_pause_btn;
+static  lv_obj_t * label_restart_btn;
 static  lv_obj_t * label_up_arrow;
 
 static  lv_obj_t * label_speed;
@@ -155,6 +157,27 @@ static void settings_handler(lv_event_t * e) {
 		xQueueSendFromISR(xQueueScreens, &scr_idx, &xHigherPriorityTaskWoken);
 	}
 	else if (code == LV_EVENT_VALUE_CHANGED) {
+		printf("Toggled\n");
+	}
+}
+
+static void play_pause_handler(lv_event_t * e) {
+	lv_event_code_t code = lv_event_get_code(e);
+
+	if(code == LV_EVENT_CLICKED) {
+		printf("Clicked\n");
+	}
+	else if(code == LV_EVENT_VALUE_CHANGED) {
+		printf("Toggled\n");
+	}
+}
+static void restart_handler(lv_event_t * e) {
+	lv_event_code_t code = lv_event_get_code(e);
+
+	if(code == LV_EVENT_CLICKED) {
+		printf("Clicked\n");
+	}
+	else if(code == LV_EVENT_VALUE_CHANGED) {
 		printf("Toggled\n");
 	}
 }
@@ -259,34 +282,34 @@ void lv_main_scr(void) {
 	lv_label_set_text_fmt(label_settings_btn, MY_SETTINGS_SYMBOL);
 	lv_obj_center(label_settings_btn);
 
-	// Play button
-	lv_obj_t * play_btn = lv_imgbtn_create(main_scr);
-	lv_obj_set_width(play_btn, 32); 
-	lv_obj_set_height(play_btn, 32);
+	// Play Pause button
+	lv_obj_t * play_pause_btn = lv_imgbtn_create(main_scr);
+	lv_obj_set_width(play_pause_btn, 32); 
+	lv_obj_set_height(play_pause_btn, 32);
 
-	lv_obj_add_event_cb(play_btn, settings_handler, LV_EVENT_ALL, NULL);
-	lv_obj_align(play_btn, LV_ALIGN_BOTTOM_LEFT, 10, -10);
-	lv_obj_add_style(play_btn, &style, 0);
+	lv_obj_add_event_cb(play_pause_btn, play_pause_handler, LV_EVENT_ALL, NULL);
+	lv_obj_align(play_pause_btn, LV_ALIGN_BOTTOM_LEFT, 10, -10);
+	lv_obj_add_style(play_pause_btn, &style, 0);
 
-	label_play_btn = lv_label_create(play_btn);
-	lv_obj_set_style_text_font(label_play_btn, &playpause_icon, LV_STATE_DEFAULT);
-	lv_label_set_text_fmt(label_play_btn, MY_PLAY_SYMBOL);
-	lv_obj_center(label_play_btn);
+	label_play_pause_btn = lv_label_create(play_pause_btn);
+	lv_obj_set_style_text_font(label_play_pause_btn, &playpause_icon, LV_STATE_DEFAULT);
+	lv_label_set_text_fmt(label_play_pause_btn, MY_PLAY_SYMBOL);
+	lv_obj_center(label_play_pause_btn);
 
 
-	// Pause button
-	lv_obj_t * pause_btn = lv_imgbtn_create(main_scr);
-	lv_obj_set_width(pause_btn, 32); 
-	lv_obj_set_height(pause_btn, 32);
+	// Restart button
+	lv_obj_t * restart_btn = lv_imgbtn_create(main_scr);
+	lv_obj_set_width(restart_btn, 32); 
+	lv_obj_set_height(restart_btn, 32);
 
-	lv_obj_add_event_cb(pause_btn, settings_handler, LV_EVENT_ALL, NULL);
-	lv_obj_align(pause_btn, LV_ALIGN_BOTTOM_RIGHT, -10, -10);
-	lv_obj_add_style(pause_btn, &style, 0);
+	lv_obj_add_event_cb(restart_btn, restart_handler, LV_EVENT_ALL, NULL);
+	lv_obj_align(restart_btn, LV_ALIGN_BOTTOM_RIGHT, -10, -10);
+	lv_obj_add_style(restart_btn, &style, 0);
 
-	label_pause_btn = lv_label_create(pause_btn);
-	lv_obj_set_style_text_font(label_pause_btn, &playpause_icon, LV_STATE_DEFAULT);
-	lv_label_set_text_fmt(label_pause_btn, MY_PAUSE_SYMBOL);
-	lv_obj_center(label_pause_btn);
+	label_restart_btn = lv_label_create(restart_btn);
+	lv_obj_set_style_text_font(label_restart_btn, &restart32, LV_STATE_DEFAULT);
+	lv_label_set_text_fmt(label_restart_btn, MY_RESTART_SYMBOL);
+	lv_obj_center(label_restart_btn);
 
 	// Up Image
 	lv_obj_t * up_arrow = lv_imgbtn_create(main_scr);
@@ -521,7 +544,7 @@ static void task_rtc(void *pvParameters){
 	}
 }
 
-static void task_speed(void *pvParameters){
+static void task_speed(void *pvParameters) {
 	int instant_speed;
 	int dt_rtt;
 	float dt;
