@@ -99,8 +99,8 @@ static  lv_obj_t * label_bike_rim;
 static  lv_obj_t * label_markdown_rim;
 
 static  lv_obj_t * label_measure;
-static  lv_obj_t * label_km_btn;
-static  lv_obj_t * label_miles_btn;
+static  lv_obj_t * label_km;
+static  lv_obj_t * label_miles;
 
 struct {
 	float dt;
@@ -136,6 +136,7 @@ extern void vApplicationMallocFailedHook(void) {
 
 SemaphoreHandle_t xSemaphoreRTC;
 SemaphoreHandle_t xSemaphoreDuration;
+SemaphoreHandle_t xSemaphoreMeasure;
 
 QueueHandle_t xQueueScreens;
 QueueHandle_t xQueueTime;
@@ -206,27 +207,16 @@ static void back_handler(lv_event_t * e) {
 	}
 }
 
-static void km_handler(lv_event_t * e) {
+static void sw_handler(lv_event_t * e) {
 	lv_event_code_t code = lv_event_get_code(e);
-
-	if(code == LV_EVENT_CLICKED) {
-		printf("Clicked\n");
-	}
-	else if(code == LV_EVENT_VALUE_CHANGED) {
-		printf("Toggled\n");
-	}
+    lv_obj_t * obj = lv_event_get_target(e);
+    LV_UNUSED(obj);
+    if(code == LV_EVENT_VALUE_CHANGED) {
+        LV_LOG_USER("State: %s\n", lv_obj_has_state(obj, LV_STATE_CHECKED) ? "On" : "Off");
+    }
+	xSemaphoreGiveFromISR(xSemaphoreMeasure, 0);
 }
 
-static void miles_handler(lv_event_t * e) {
-	lv_event_code_t code = lv_event_get_code(e);
-
-	if(code == LV_EVENT_CLICKED) {
-		printf("Clicked\n");
-	}
-	else if(code == LV_EVENT_VALUE_CHANGED) {
-		printf("Toggled\n");
-	}
-}
 
 static void dropdown_handler(lv_event_t * e){
     lv_event_code_t code = lv_event_get_code(e);
@@ -444,33 +434,37 @@ void lv_settings_scr(void){
 	lv_obj_set_style_text_color(label_measure, lv_color_black(), LV_STATE_DEFAULT);
 	lv_label_set_text_fmt(label_measure, "Unidade");
 
-	// Km button
-	lv_obj_t * km_btn = lv_imgbtn_create(settings_scr);
-	lv_obj_set_width(km_btn, 32); 
-	lv_obj_set_height(km_btn, 32);
+	lv_obj_t * sw;
 
-	lv_obj_add_event_cb(km_btn, km_handler, LV_EVENT_ALL, NULL);
-	lv_obj_align(km_btn, LV_ALIGN_CENTER, -50, 70);
-	lv_obj_add_style(km_btn, &style, 0);
+    sw = lv_switch_create(settings_scr);
+    lv_obj_add_event_cb(sw, sw_handler, LV_EVENT_ALL, NULL);
+	lv_obj_align(sw, LV_ALIGN_CENTER, 0, 70);
 
-	label_km_btn = lv_label_create(km_btn);
-	lv_obj_set_style_text_font(label_km_btn, &noto20, LV_STATE_DEFAULT);
-	lv_label_set_text_fmt(label_km_btn, "Km");
-	lv_obj_center(label_km_btn);
 
-	// Miles button
-	lv_obj_t * miles_btn = lv_imgbtn_create(settings_scr);
-	lv_obj_set_width(miles_btn, 64); 
-	lv_obj_set_height(miles_btn, 32);
+	// lv_obj_t *sw1 = lv_switch_create(lv_scr_act(), NULL);
+    // lv_obj_align(sw1, NULL, LV_ALIGN_CENTER, 0, 70);
+    // lv_obj_add_event_cb(sw1, switch_handler, LV_EVENT_ALL, NULL);
 
-	lv_obj_add_event_cb(miles_btn, miles_handler, LV_EVENT_ALL, NULL);
-	lv_obj_align(miles_btn, LV_ALIGN_CENTER, 50, 70);
-	lv_obj_add_style(miles_btn, &style, 0);
+    // /*Copy the first switch and turn it ON*/
+    // lv_obj_t *sw2 = lv_switch_create(lv_scr_act(), sw1);
+    // lv_switch_on(sw2, LV_ANIM_ON);
+    // lv_obj_align(sw2, NULL, LV_ALIGN_CENTER, 0, 70);
 
-	label_miles_btn = lv_label_create(miles_btn);
-	lv_obj_set_style_text_font(label_miles_btn, &noto20, LV_STATE_DEFAULT);
-	lv_label_set_text_fmt(label_miles_btn, "milhas");
-	lv_obj_center(label_miles_btn);
+	// Km label
+	label_km = lv_label_create(settings_scr);
+	lv_obj_set_width(label_km, 32); 
+	lv_obj_set_height(label_km, 32);
+	lv_obj_align(label_km, LV_ALIGN_CENTER, -70 , 80);
+	lv_obj_set_style_text_font(label_km, &noto20, LV_STATE_DEFAULT);
+	lv_label_set_text_fmt(label_km, "Km");
+
+	// Miles label
+	label_miles = lv_label_create(settings_scr);
+	lv_obj_set_width(label_miles, 64); 
+	lv_obj_set_height(label_miles, 32);
+	lv_obj_align(label_miles, LV_ALIGN_CENTER, 70 , 80);
+	lv_obj_set_style_text_font(label_miles, &noto20, LV_STATE_DEFAULT);
+	lv_label_set_text_fmt(label_miles, "milhas");
 }
 
 void printfMutex(char *s) {
@@ -502,10 +496,6 @@ static void task_lcd(void *pvParameters) {
 	settings_scr = lv_obj_create(NULL);
 	lv_main_scr();
 	lv_settings_scr();
-
-	// lv_scr_load(main_scr); // exibe tela 1
-	// lv_scr_load(settings_scr); // exibe tela 2
-
 
 	int screen = 0;
 
@@ -629,13 +619,30 @@ static void task_speed(void *pvParameters) {
 	float dt;
 	int pol = 20;
 	int last_speed = 0;
+	float fator = 1.0;
 
 	for (;;) {
+
+		if (xSemaphoreTake(xSemaphoreMeasure, 0)){
+			if (fator > 0.9) {
+				lv_label_set_text_fmt(label_speed_txt, "mi/h",speed.instant_speed);
+				lv_label_set_text_fmt(label_average_speed_txt, "mi/h",speed.instant_speed);
+				lv_label_set_text_fmt(label_distance_txt, "mi",speed.instant_speed);
+				fator = 1 / 1.609;
+			} else {
+				lv_label_set_text_fmt(label_speed_txt, "Km/h",speed.instant_speed);
+				lv_label_set_text_fmt(label_average_speed_txt, "Km/h",speed.instant_speed);
+				lv_label_set_text_fmt(label_distance_txt, "Km",speed.instant_speed);
+				fator = 1;
+			}
+		}
+
 		if (xQueueReceive(xQueueTime, &dt_rtt, 0)) {
 			// printf("Dt rtt: %d\n",dt_rtt);
 
 			speed.dt = 500.0 / dt_rtt; // Frequencia da roda
-			speed.instant_speed = (pol/2) * 0.0254 * 2 * PI * speed.dt * 3.6 * 10; // r * w
+			speed.instant_speed = (pol/2) * 0.0254 * 2 * PI * speed.dt * 3.6 * 10 * fator; // r * w
+			
 			// printf("Instant Speed: %d\n",speed.instant_speed);
 			
 			if (speed.instant_speed > last_speed) {
@@ -649,7 +656,7 @@ static void task_speed(void *pvParameters) {
 
 			last_speed = speed.instant_speed;
 			xQueueSend(xQueueSpeed, &speed, 0);
-		}		
+		}
 	}
 }
 
@@ -861,6 +868,7 @@ int main(void) {
 
 	xSemaphoreRTC = xSemaphoreCreateBinary();
 	xSemaphoreDuration = xSemaphoreCreateBinary();
+	xSemaphoreMeasure = xSemaphoreCreateBinary();
 
 	xQueueScreens = xQueueCreate(32, sizeof(uint32_t));
 	xQueueTime = xQueueCreate(32, sizeof(uint32_t));
