@@ -17,10 +17,6 @@
 #define TASK_SIMULATOR_STACK_SIZE (4096 / sizeof(portSTACK_TYPE))
 #define TASK_SIMULATOR_STACK_PRIORITY (tskIDLE_PRIORITY)
 
-#define RAIO 0.508/2
-#define VEL_MAX_KMH  5.0f
-#define VEL_MIN_KMH  0.5f
-
 LV_FONT_DECLARE(noto50);
 LV_FONT_DECLARE(noto30);
 LV_FONT_DECLARE(noto20);
@@ -611,7 +607,7 @@ static void task_speed(void *pvParameters) {
 		// Usa RTT para calcular velocidade instantanea e manda para task route
 		if (xQueueReceive(xQueueTime, &dt_rtt, 0)) {
 			speed.freq = 500.0 / dt_rtt;
-			speed.instant_speed = (pol/2) * 0.0254 * 2 * PI * speed.freq * 3.6 * 10 * fator; // r * w
+			speed.instant_speed = (pol/2) * 0.0254 * 2 * PI * speed.freq * 3.6 * fator; // r * w
 
 			// Atualiza indicativo de aceleração conforme última velocidade		
 			if (speed.instant_speed > last_speed) {
@@ -627,51 +623,6 @@ static void task_speed(void *pvParameters) {
 			xQueueSend(xQueueSpeed, &speed, 0);
 		}
 	}
-}
-
-float kmh_to_hz(float vel, float raio) {
-    float f = vel / (2*PI*raio*3.6);
-    return(f);
-}
-
-static void task_simulador(void *pvParameters) {
-    pmc_enable_periph_clk(ID_PIOC);
-    pio_set_output(PIOC, PIO_PC31, 1, 0, 0);
-
-    float vel = VEL_MAX_KMH;
-    float f;
-    int ramp_up = 1;
-	int ramp = 0;
-
-    while(1) {
-        pio_clear(PIOC, PIO_PC31);
-        delay_ms(1);
-        pio_set(PIOC, PIO_PC31);
-
-		if (ramp) {
-			if (ramp_up) {
-				// printf("[SIMU] ACELERANDO: %d \n", (int) (10*vel));
-				vel += 0.5;
-			} else {
-				// printf("[SIMU] DESACELERANDO: %d \n",  (int) (10*vel));
-				vel -= 0.5;
-			}
-
-			if (vel >= VEL_MAX_KMH) {
-				ramp_up = 0;
-			} else if (vel <= VEL_MIN_KMH) {
-				ramp_up = 1;
-			}
-
-		} else {
-			vel = 5;
-			// printf("[SIMU] CONSTANTE: %d \n", (int) (10*vel));
-		}
-        f = kmh_to_hz(vel, RAIO);
-        int t = 965*(1.0/f); //UTILIZADO 965 como multiplicador ao invés de 1000
-                             //para compensar o atraso gerado pelo Escalonador do freeRTOS
-        delay_ms(t);
-    }
 }
 
 /************************************************************************/
@@ -858,11 +809,6 @@ int main(void) {
 	if (xTaskCreate(task_route, "route", TASK_LCD_STACK_SIZE, NULL, TASK_LCD_STACK_PRIORITY, NULL) != pdPASS) {
 		printf("Failed to create route task\r\n");
 	}
-
-	if (xTaskCreate(task_simulador, "SIMUL", TASK_SIMULATOR_STACK_SIZE, NULL, TASK_SIMULATOR_STACK_PRIORITY, NULL) != pdPASS) {
-        printf("Failed to create lcd task\r\n");
-    }
-
 	
 	/* Start the scheduler. */
 	vTaskStartScheduler();
