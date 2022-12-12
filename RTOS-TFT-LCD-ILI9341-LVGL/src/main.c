@@ -25,13 +25,15 @@ LV_FONT_DECLARE(noto30);
 LV_FONT_DECLARE(noto20);
 LV_FONT_DECLARE(settings_icon);
 LV_FONT_DECLARE(playpause_icon);
-LV_FONT_DECLARE(updown_icon);
+LV_FONT_DECLARE(speed40);
 
 #define MY_SETTINGS_SYMBOL "\xEF\x80\x93"
 #define MY_PLAY_SYMBOL "\xEF\x81\x8B"
 #define MY_PAUSE_SYMBOL "\xEF\x81\x8C"
 #define MY_UP_ARROW_SYMBOL "\xEF\x84\x82"
 #define MY_DOWN_ARROW_SYMBOL "\xEF\x84\x83"
+#define MY_MINUS_SYMBOL "\xEF\x81\xA8"
+
 
 #define CICLE_PIO PIOA
 #define CICLE_PIO_ID ID_PIOA
@@ -223,7 +225,7 @@ void RTC_Handler(void) {
 
 void cicle_callback(){
 	uint32_t dt = rtt_read_timer_value(RTT);
-	RTT_init(100, 0, 0);
+	RTT_init(500, 0, 0);
 	xQueueSendFromISR(xQueueTime, &dt, 0);
 
 	// printf("handler\n");
@@ -293,8 +295,8 @@ void lv_main_scr(void) {
 
 	label_up_arrow = lv_label_create(up_arrow);
 	lv_obj_align(up_arrow, LV_ALIGN_CENTER, 45, -55);
-	lv_obj_add_style(up_arrow, &style, 0);
-	lv_obj_set_style_text_font(label_up_arrow, &updown_icon, LV_STATE_DEFAULT);
+	lv_obj_add_style(up_arrow, &style, 0);	
+	lv_obj_set_style_text_font(label_up_arrow, &speed40, LV_STATE_DEFAULT);
 	lv_label_set_text_fmt(label_up_arrow, MY_UP_ARROW_SYMBOL);
 	lv_obj_center(label_up_arrow); 
 
@@ -520,22 +522,45 @@ static void task_rtc(void *pvParameters){
 }
 
 static void task_speed(void *pvParameters){
-	float instant_speed;
+	int instant_speed;
 	int dt_rtt;
 	float dt;
 	int pol = 20;
+	int last_speed = 0;
 
-	for (;;)  {
+	for (;;) {
 		if (xQueueReceive(xQueueTime, &dt_rtt, 0)) {
 			printf("Dt rtt: %d\n",dt_rtt);
 
-			dt = 100.0 / dt_rtt; // Frequencia da roda
-			instant_speed = (float) (pol/2) * 0.0254 * 2 * PI * dt * 3.6 ; // r * w
+			dt = 500.0 / dt_rtt; // Frequencia da roda
+			instant_speed = (pol/2) * 0.0254 * 2 * PI * dt * 3.6 * 10; // r * w
 
-			xSemaphoreTake( xMutex, portMAX_DELAY );
-			printf("Dt: %f\n", dt);
-			printf("Instant speed: %f\n", 10 * instant_speed);
-			xSemaphoreGive( xMutex );
+			// xSemaphoreTake( xMutex, portMAX_DELAY );
+			// printf("Dt: %f\n", dt);
+			// printf("Instant speed: %d\n", instant_speed);
+			// xSemaphoreGive( xMutex );
+
+			// if (instant_speed == last_speed) {
+			// 	lv_label_set_text_fmt(label_speed, "%02d",instant_speed);
+			// } else {
+			// 	if (instant_speed > last_speed) {
+			// 		lv_label_set_text_fmt(label_up_arrow, MY_UP_ARROW_SYMBOL);
+			// 	} else {
+			// 		lv_label_set_text_fmt(label_up_arrow, MY_DOWN_ARROW_SYMBOL);
+			// 	}
+			// 	lv_label_set_text_fmt(label_speed, "%02d",instant_speed);
+			// }
+			
+			if (instant_speed > last_speed) {
+				lv_label_set_text_fmt(label_up_arrow, MY_UP_ARROW_SYMBOL);
+			} else if (instant_speed == last_speed) {
+				lv_label_set_text_fmt(label_up_arrow, MY_MINUS_SYMBOL);
+			} else {
+				lv_label_set_text_fmt(label_up_arrow, MY_DOWN_ARROW_SYMBOL);
+			}
+			lv_label_set_text_fmt(label_speed, "%02d",instant_speed);
+
+			last_speed = instant_speed;
 		}		
 	}
 }
@@ -753,13 +778,13 @@ int main(void) {
 	xMutex = xSemaphoreCreateMutex();
 
 	/* Create task to control oled */
-	// if (xTaskCreate(task_lcd, "LCD", TASK_LCD_STACK_SIZE, NULL, TASK_LCD_STACK_PRIORITY, NULL) != pdPASS) {
-	// 	printf("Failed to create lcd task\r\n");
-	// }
+	if (xTaskCreate(task_lcd, "LCD", TASK_LCD_STACK_SIZE, NULL, TASK_LCD_STACK_PRIORITY, NULL) != pdPASS) {
+		printf("Failed to create lcd task\r\n");
+	}
 
-	// if (xTaskCreate(task_rtc, "RTC", TASK_LCD_STACK_SIZE, NULL, TASK_LCD_STACK_PRIORITY, NULL) != pdPASS) {
-	// 	printf("Failed to create rtc task\r\n");
-	// }
+	if (xTaskCreate(task_rtc, "RTC", TASK_LCD_STACK_SIZE, NULL, TASK_LCD_STACK_PRIORITY, NULL) != pdPASS) {
+		printf("Failed to create rtc task\r\n");
+	}
 
 	if (xTaskCreate(task_simulador, "SIMUL", TASK_SIMULATOR_STACK_SIZE, NULL, TASK_SIMULATOR_STACK_PRIORITY, NULL) != pdPASS) {
         printf("Failed to create lcd task\r\n");

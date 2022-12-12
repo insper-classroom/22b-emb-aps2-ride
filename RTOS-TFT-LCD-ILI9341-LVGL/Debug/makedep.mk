@@ -634,9 +634,9 @@ src\playpause_icon.c
 
 src\settings_icon.c
 
-src\touch\touch.c
+src\speed40.c
 
-src\updown_icon.c
+src\touch\touch.c
 
 src\ASF\common\services\sleepmgr\sam\sleepmgr.c
 
