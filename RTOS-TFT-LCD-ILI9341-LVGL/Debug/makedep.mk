@@ -634,8 +634,6 @@ src\playpause_icon.c
 
 src\restart32.c
 
-src\restart40.c
-
 src\settings_icon.c
 
 src\speed40.c

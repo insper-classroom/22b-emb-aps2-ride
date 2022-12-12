@@ -36,12 +36,9 @@ LV_FONT_DECLARE(restart32);
 #define MY_DOWN_ARROW_SYMBOL "\xEF\x84\x83"
 #define MY_MINUS_SYMBOL "\xEF\x81\xA8"
 
-
 #define CICLE_PIO PIOA
 #define CICLE_PIO_ID ID_PIOA
 #define CICLE_IDX_MASK (1 << 19)
-
-
 
 typedef struct  {
   uint32_t year;
@@ -105,6 +102,11 @@ static  lv_obj_t * label_measure;
 static  lv_obj_t * label_km_btn;
 static  lv_obj_t * label_miles_btn;
 
+struct {
+	float dt;
+	int instant_speed;
+} typedef speed_struct;
+
 
 /************************************************************************/
 /* RTOS                                                                 */
@@ -133,9 +135,12 @@ extern void vApplicationMallocFailedHook(void) {
 }
 
 SemaphoreHandle_t xSemaphoreRTC;
+SemaphoreHandle_t xSemaphoreDuration;
 
 QueueHandle_t xQueueScreens;
 QueueHandle_t xQueueTime;
+QueueHandle_t xQueueRoute;
+QueueHandle_t xQueueSpeed;
 
 SemaphoreHandle_t xMutex;
 
@@ -166,6 +171,9 @@ static void play_pause_handler(lv_event_t * e) {
 
 	if(code == LV_EVENT_CLICKED) {
 		printf("Clicked\n");
+		int btn_id = 0;
+		BaseType_t xHigherPriorityTaskWoken = pdTRUE;
+		xQueueSendFromISR(xQueueRoute, &btn_id, &xHigherPriorityTaskWoken);
 	}
 	else if(code == LV_EVENT_VALUE_CHANGED) {
 		printf("Toggled\n");
@@ -176,6 +184,9 @@ static void restart_handler(lv_event_t * e) {
 
 	if(code == LV_EVENT_CLICKED) {
 		printf("Clicked\n");
+		int btn_id = 1;
+		BaseType_t xHigherPriorityTaskWoken = pdTRUE;
+		xQueueSendFromISR(xQueueRoute, &btn_id, &xHigherPriorityTaskWoken);
 	}
 	else if(code == LV_EVENT_VALUE_CHANGED) {
 		printf("Toggled\n");
@@ -236,6 +247,7 @@ void RTC_Handler(void) {
     	rtc_clear_status(RTC, RTC_SCCR_SECCLR);
 		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 		xSemaphoreGiveFromISR(xSemaphoreRTC, &xHigherPriorityTaskWoken);
+		xSemaphoreGiveFromISR(xSemaphoreDuration, &xHigherPriorityTaskWoken);
 	}
 
     rtc_clear_status(RTC, RTC_SCCR_SECCLR);
@@ -346,10 +358,10 @@ void lv_main_scr(void) {
 
 	// Average speed number
 	label_average_speed_number = lv_label_create(main_scr);
-	lv_obj_align(label_average_speed_number, LV_ALIGN_CENTER, -65 , 40);
+	lv_obj_align(label_average_speed_number, LV_ALIGN_CENTER, -75 , 40);
 	lv_obj_set_style_text_font(label_average_speed_number, &noto30, LV_STATE_DEFAULT);
 	lv_obj_set_style_text_color(label_average_speed_number, lv_color_black(), LV_STATE_DEFAULT);
-	lv_label_set_text_fmt(label_average_speed_number, "0");
+	lv_label_set_text_fmt(label_average_speed_number, "00");
 	
 	// Distance text
 	label_distance_txt = lv_label_create(main_scr);
@@ -360,10 +372,10 @@ void lv_main_scr(void) {
 
 	// Distance number
 	label_distance_number = lv_label_create(main_scr);
-	lv_obj_align(label_distance_number, LV_ALIGN_CENTER, 55 , 40);
+	lv_obj_align(label_distance_number, LV_ALIGN_CENTER, 45 , 40);
 	lv_obj_set_style_text_font(label_distance_number, &noto30, LV_STATE_DEFAULT);
 	lv_obj_set_style_text_color(label_distance_number, lv_color_black(), LV_STATE_DEFAULT);
-	lv_label_set_text_fmt(label_distance_number, "0");
+	lv_label_set_text_fmt(label_distance_number, "00");
 
 	// Time number
 	label_time_number = lv_label_create(main_scr);
@@ -544,8 +556,75 @@ static void task_rtc(void *pvParameters){
 	}
 }
 
+static void task_route(void *pvParameters) {
+	int route_on = 0; // 0 -> não escrevendo, 1 -> escrevendo
+	int btn_id; // 0 -> play/pause, 1 -> restart
+	speed_struct speed;
+	int speed_count = 0;
+	int speed_sum = 0;
+	int average_speed = 0;
+	float distance = 0;
+
+	int seconds = 0;
+	int minutes = 0;
+	int hours = 0;
+	int second_flag = 0;
+
+	for (;;) {
+		if (xSemaphoreTake(xSemaphoreDuration, 0) && route_on) {
+			seconds++;
+			hours = seconds / 3600;
+			minutes = seconds / 60 - hours * 60;
+			if (second_flag){
+				lv_label_set_text_fmt(label_duration_number, "%02d %02d", hours, minutes);
+				second_flag = 0;
+			} else {
+				lv_label_set_text_fmt(label_duration_number, "%02d:%02d", hours, minutes);
+				second_flag = 1;
+			}
+			printf("seconds: %d, minutes: %d, hours: %d\n", seconds, minutes, hours);
+		}
+
+		if (xQueueReceive(xQueueRoute, &btn_id, 10)) {
+			if (btn_id == 0) {
+				route_on = !route_on;
+				if (route_on) {
+					lv_label_set_text_fmt(label_play_pause_btn, MY_PAUSE_SYMBOL);
+				} else {
+					lv_label_set_text_fmt(label_play_pause_btn, MY_PLAY_SYMBOL);
+				}
+			}
+			
+			if (btn_id == 1) {
+				route_on = 0; // Reinicia
+				speed_count = 0;
+				speed_sum = 0;
+				distance = 0;
+				seconds = 0;
+				lv_label_set_text_fmt(label_duration_number, "00:00");
+				lv_label_set_text_fmt(label_play_pause_btn, MY_PLAY_SYMBOL);
+				lv_label_set_text_fmt(label_average_speed_number, "00");
+				lv_label_set_text_fmt(label_distance_number, "00");
+			}
+		}
+
+		if (xQueueReceive(xQueueSpeed, &speed, 10) && route_on) {
+			speed_count++;
+			speed_sum += speed.instant_speed;
+			average_speed = speed_sum / speed_count;
+			lv_label_set_text_fmt(label_average_speed_number, "%02d", average_speed);
+
+			distance += speed.instant_speed / (speed.dt * 3600);		
+			lv_label_set_text_fmt(label_distance_number, "%02d", (int) distance);
+
+			// printf("Distancia atual: %f\n", distance);
+			
+		}
+	}
+}
+
 static void task_speed(void *pvParameters) {
-	int instant_speed;
+	speed_struct speed;
 	int dt_rtt;
 	float dt;
 	int pol = 20;
@@ -553,37 +632,23 @@ static void task_speed(void *pvParameters) {
 
 	for (;;) {
 		if (xQueueReceive(xQueueTime, &dt_rtt, 0)) {
-			printf("Dt rtt: %d\n",dt_rtt);
+			// printf("Dt rtt: %d\n",dt_rtt);
 
-			dt = 500.0 / dt_rtt; // Frequencia da roda
-			instant_speed = (pol/2) * 0.0254 * 2 * PI * dt * 3.6 * 10; // r * w
-
-			// xSemaphoreTake( xMutex, portMAX_DELAY );
-			// printf("Dt: %f\n", dt);
-			// printf("Instant speed: %d\n", instant_speed);
-			// xSemaphoreGive( xMutex );
-
-			// if (instant_speed == last_speed) {
-			// 	lv_label_set_text_fmt(label_speed, "%02d",instant_speed);
-			// } else {
-			// 	if (instant_speed > last_speed) {
-			// 		lv_label_set_text_fmt(label_up_arrow, MY_UP_ARROW_SYMBOL);
-			// 	} else {
-			// 		lv_label_set_text_fmt(label_up_arrow, MY_DOWN_ARROW_SYMBOL);
-			// 	}
-			// 	lv_label_set_text_fmt(label_speed, "%02d",instant_speed);
-			// }
+			speed.dt = 500.0 / dt_rtt; // Frequencia da roda
+			speed.instant_speed = (pol/2) * 0.0254 * 2 * PI * speed.dt * 3.6 * 10; // r * w
+			// printf("Instant Speed: %d\n",speed.instant_speed);
 			
-			if (instant_speed > last_speed) {
+			if (speed.instant_speed > last_speed) {
 				lv_label_set_text_fmt(label_up_arrow, MY_UP_ARROW_SYMBOL);
-			} else if (instant_speed == last_speed) {
+			} else if (speed.instant_speed == last_speed) {
 				lv_label_set_text_fmt(label_up_arrow, MY_MINUS_SYMBOL);
 			} else {
 				lv_label_set_text_fmt(label_up_arrow, MY_DOWN_ARROW_SYMBOL);
 			}
-			lv_label_set_text_fmt(label_speed, "%02d",instant_speed);
+			lv_label_set_text_fmt(label_speed, "%02d",speed.instant_speed);
 
-			last_speed = instant_speed;
+			last_speed = speed.instant_speed;
+			xQueueSend(xQueueSpeed, &speed, 0);
 		}		
 	}
 }
@@ -609,10 +674,10 @@ static void task_simulador(void *pvParameters) {
 
 		if (ramp) {
 			if (ramp_up) {
-				printf("[SIMU] ACELERANDO: %d \n", (int) (10*vel));
+				// printf("[SIMU] ACELERANDO: %d \n", (int) (10*vel));
 				vel += 0.5;
 			} else {
-				printf("[SIMU] DESACELERANDO: %d \n",  (int) (10*vel));
+				// printf("[SIMU] DESACELERANDO: %d \n",  (int) (10*vel));
 				vel -= 0.5;
 			}
 
@@ -628,7 +693,7 @@ static void task_simulador(void *pvParameters) {
 		}
         f = kmh_to_hz(vel, RAIO);
 		xSemaphoreTake( xMutex, portMAX_DELAY );
-		printf("frequencia: %f\n", f);
+		// printf("frequencia: %f\n", f);
 		xSemaphoreGive( xMutex );
         int t = 965*(1.0/f); //UTILIZADO 965 como multiplicador ao invés de 1000
                              //para compensar o atraso gerado pelo Escalonador do freeRTOS
@@ -795,9 +860,12 @@ int main(void) {
 	cicle_init();
 
 	xSemaphoreRTC = xSemaphoreCreateBinary();
+	xSemaphoreDuration = xSemaphoreCreateBinary();
 
 	xQueueScreens = xQueueCreate(32, sizeof(uint32_t));
 	xQueueTime = xQueueCreate(32, sizeof(uint32_t));
+	xQueueRoute = xQueueCreate(32, sizeof(uint32_t));
+	xQueueSpeed = xQueueCreate(32, sizeof(speed_struct));
 	xMutex = xSemaphoreCreateMutex();
 
 	/* Create task to control oled */
@@ -817,6 +885,9 @@ int main(void) {
 		printf("Failed to create speed task\r\n");
 	}
 
+	if (xTaskCreate(task_route, "route", TASK_LCD_STACK_SIZE, NULL, TASK_LCD_STACK_PRIORITY, NULL) != pdPASS) {
+		printf("Failed to create route task\r\n");
+	}
 	
 	/* Start the scheduler. */
 	vTaskStartScheduler();
